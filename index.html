@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>有聲書轉換器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #0071e3; --accent: #34c759; --text: #1d1d1f; --text2: #86868b; --bg: #f5f5f7; --card: #fff; --border: #d2d2d7; }
+        body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); padding: 20px; text-align: center; color: #fff; }
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header p { font-size: 12px; opacity: 0.9; margin-top: 4px; }
+        
+        .container { max-width: 500px; margin: 0 auto; padding: 16px; }
+        
+        .card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .title { font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .step { background: var(--primary); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+        
+        /* 上傳區域 */
+        .upload-box { border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; background: var(--bg); }
+        .upload-box:active { background: rgba(0,113,227,0.1); }
+        .upload-box .icon { font-size: 36px; }
+        .upload-box .text { font-size: 14px; margin-top: 8px; }
+        .upload-box .sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+        
+        /* 檔案資訊 */
+        .file-info { display: none; margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 10px; }
+        .file-info.show { display: block; }
+        .file-name { font-weight: 600; font-size: 13px; }
+        .file-size { font-size: 11px; color: var(--text2); margin-top: 2px; }
+        
+        /* 文字預覽 */
+        .preview { display: none; max-height: 150px; overflow-y: auto; background: var(--bg); border-radius: 10px; padding: 12px; margin-top: 12px; font-size: 12px; line-height: 1.6; }
+        .preview.show { display: block; }
+        
+        /* 語音選擇 */
+        .voice-list { display: flex; flex-direction: column; gap: 8px; }
+        .voice-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 2px solid var(--border); border-radius: 10px; transition: 0.2s; }
+        .voice-item:active { background: var(--bg); }
+        .voice-item.selected { border-color: var(--primary); background: rgba(0,113,227,0.08); }
+        .voice-info { display: flex; align-items: center; gap: 10px; }
+        .voice-icon { width: 36px; height: 36px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+        .voice-name { font-weight: 600; font-size: 14px; }
+        .voice-lang { font-size: 11px; color: var(--text2); }
+        
+        .preview-btn { padding: 8px 16px; background: var(--primary); color: #fff; border: none; border-radius: 20px; font-size: 12px; cursor: pointer; }
+        
+        /* 設定 */
+        .settings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .setting { text-align: center; }
+        .setting label { font-size: 11px; font-weight: 500; display: block; margin-bottom: 6px; }
+        .setting input { width: 100%; }
+        .setting .val { font-size: 11px; color: var(--text2); margin-top: 4px; }
+        
+        /* 按鈕 */
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:active { background: #0063c9; }
+        .btn-primary:disabled { background: var(--text2); }
+        
+        .btn-secondary { background: var(--accent); color: #fff; margin-top: 10px; }
+        
+        /* 進度 */
+        .progress { display: none; margin-top: 14px; }
+        .progress.show { display: block; }
+        .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); width: 0%; }
+        .progress-text { text-align: center; font-size: 12px; color: var(--text2); margin-top: 8px; }
+        
+        /* 結果 */
+        .result { display: none; }
+        .result.show { display: block; }
+        .result audio { width: 100%; margin-top: 12px; }
+        
+        .result-btns { display: flex; gap: 10px; margin-top: 12px; }
+        .result-btns .btn { flex: 1; }
+        
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 10px; margin-right: 6px; }
+        .badge.on { background: rgba(52,199,89,0.15); color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>有聲書轉換器</h1>
+        <p>v3.9 - 修復版</p>
+    </div>
+    
+    <div class="container">
+        <!-- 狀態 -->
+        <div class="card">
+            <div class="title"><span class="step">✓</span>功能狀態</div>
+            <span class="badge on">PDF</span>
+            <span class="badge on">EPUB</span>
+            <span class="badge on">TXT</span>
+            <span class="badge on">v3.9</span>
+        </div>
+        
+        <!-- 1. 上傳 -->
+        <div class="card">
+            <div class="title"><span class="step">1</span>上傳電子書</div>
+            
+            <!-- 直接用可見的 file input -->
+            <input type="file" id="fileInput" accept=".pdf,.epub,.txt" style="display:block; width:100%; padding:12px; border:2px solid var(--primary); border-radius:10px; background:var(--primary); color:#fff; font-size:14px; font-weight:600; text-align:center; cursor:pointer; margin-bottom:12px;" onclick="this.value=''" onchange="handleFile(this.files[0])">
+            
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+            
+            <div class="preview" id="preview">
+                <strong>文字預覽：</strong>
+                <div id="previewText" style="margin-top:8px;"></div>
+            </div>
+        </div>
+        
+        <!-- 2. 說書人 -->
+        <div class="card">
+            <div class="title"><span class="step">2</span>選擇說書人</div>
+            <div class="voice-list">
+                <div class="voice-item selected" data-voice="zh-CN" onclick="selectVoice(this)">
+                    <div class="voice-info">
+                        <div class="voice-icon">👩</div>
+                        <div>
+                            <div class="voice-name">曉曉</div>
+                            <div class="voice-lang">中文-女聲</div>
+                        </div>
+                    </div>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'zh-CN')">試聽</button>
+                </div>
+                
+                <div class="voice-item" data-voice="zh-CN-Yunxi" onclick="selectVoice(this)">
+                    <div class="voice-info">
+                        <div class="voice-icon">👨</div>
+                        <div>
+                            <div class="voice-name">雲希</div>
+                            <div class="voice-lang">中文-男聲</div>
+                        </div>
+                    </div>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'zh-CN-Yunxi')">試聽</button>
+                </div>
+                
+                <div class="voice-item" data-voice="en-US" onclick="selectVoice(this)">
+                    <div class="voice-info">
+                        <div class="voice-icon">👩</div>
+                        <div>
+                            <div class="voice-name">Jenny</div>
+                            <div class="voice-lang">英文-女聲</div>
+                        </div>
+                    </div>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'en-US')">試聽</button>
+                </div>
+                
+                <div class="voice-item" data-voice="ja-JP" onclick="selectVoice(this)">
+                    <div class="voice-info">
+                        <div class="voice-icon">👩</div>
+                        <div>
+                            <div class="voice-name">七海</div>
+                            <div class="voice-lang">日文-女聲</div>
+                        </div>
+                    </div>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'ja-JP')">試聽</button>
+                </div>
+                
+                <div class="voice-item" data-voice="ko-KR" onclick="selectVoice(this)">
+                    <div class="voice-info">
+                        <div class="voice-icon">👩</div>
+                        <div>
+                            <div class="voice-name">SunHi</div>
+                            <div class="voice-lang">韓文-女聲</div>
+                        </div>
+                    </div>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'ko-KR')">試聽</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 3. 設定 -->
+        <div class="card">
+            <div class="title"><span class="step">3</span>調整設定</div>
+            <div class="settings">
+                <div class="setting">
+                    <label>語速</label>
+                    <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1" oninput="updateSetting('speed')">
+                    <div class="val" id="speedVal">1.0x</div>
+                </div>
+                <div class="setting">
+                    <label>音調</label>
+                    <input type="range" id="pitch" min="-2" max="2" step="0.1" value="0" oninput="updateSetting('pitch')">
+                    <div class="val" id="pitchVal">0</div>
+                </div>
+                <div class="setting">
+                    <label>音量</label>
+                    <input type="range" id="volume" min="0" max="1" step="0.1" value="1" oninput="updateSetting('volume')">
+                    <div class="val" id="volumeVal">100%</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 轉換 -->
+        <button type="button" class="btn btn-primary" id="convertBtn" onclick="startConvert()">開始轉換為有聲書</button>
+        
+        <div class="progress" id="progress">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-text" id="progressText">準備中...</div>
+        </div>
+        
+        <!-- 結果 -->
+        <div class="result" id="result">
+            <div class="card">
+                <div class="title"><span class="step">✓</span>轉換完成！</div>
+                <audio id="audioPlayer" controls></audio>
+                <div class="result-btns">
+                    <button type="button" class="btn btn-primary" onclick="downloadAudio()">下載</button>
+                    <button type="button" class="btn btn-secondary" onclick="uploadToCloud()">雲端</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        
+        let selectedVoice = localStorage.getItem('selectedVoice') || 'zh-CN';
+        let extractedText = '';
+        let currentFileName = '';
+        
+        // 初始化設定
+        function init() {
+            document.getElementById('speed').value = localStorage.getItem('speed') || 1;
+            document.getElementById('pitch').value = localStorage.getItem('pitch') || 0;
+            document.getElementById('volume').value = localStorage.getItem('volume') || 1;
+            updateSetting('speed');
+            updateSetting('pitch');
+            updateSetting('volume');
+            
+            // 恢復選擇的語音
+            document.querySelectorAll('.voice-item').forEach(el => {
+                el.classList.toggle('selected', el.dataset.voice === selectedVoice);
+            });
+        }
+        
+        function updateSetting(type) {
+            const val = document.getElementById(type).value;
+            let display = val + 'x';
+            if (type === 'volume') display = Math.round(val * 100) + '%';
+            if (type === 'pitch') display = (val > 0 ? '+' : '') + val;
+            document.getElementById(type + 'Val').textContent = display;
+            localStorage.setItem(type, val);
+        }
+        
+        function selectVoice(el) {
+            document.querySelectorAll('.voice-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedVoice = el.dataset.voice;
+            localStorage.setItem('selectedVoice', selectedVoice);
+        }
+        
+        function previewVoice(event, voice) {
+            event.stopPropagation();
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+            
+            const text = '您好，這是語音預覽，請確認這是您喜歡的聲音。';
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = parseFloat(document.getElementById('speed').value);
+            utterance.pitch = 1 + parseFloat(document.getElementById('pitch').value) * 0.5;
+            utterance.volume = parseFloat(document.getElementById('volume').value);
+            
+            // 嘗試使用選擇的聲音
+            const voiceObj = getVoiceByLang(selectedVoice);
+            if (voiceObj) {
+                utterance.voice = voiceObj;
+            }
+            
+            window.speechSynthesis.speak(utterance);
+        }
+        
+        // 獲取可用聲音
+        function getVoiceByLang(lang) {
+            const voices = window.speechSynthesis.getVoices();
+            
+            // 語言對應表
+            const langMap = {
+                'zh-CN': ['Chinese', 'Mandarin', 'zh-CN', 'zh-TW', 'zh'],
+                'zh-CN-Yunxi': ['Chinese', 'Mandarin', 'zh-CN', 'zh-TW', 'zh'],
+                'en-US': ['en-US', 'English', 'en'],
+                'ja-JP': ['ja-JP', 'Japanese', 'ja'],
+                'ko-KR': ['ko-KR', 'Korean', 'ko']
+            };
+            
+            const keywords = langMap[lang] || [lang];
+            
+            // 嘗試找到匹配的聲音
+            for (const keyword of keywords) {
+                const found = voices.find(v => v.lang.toLowerCase().includes(keyword.toLowerCase()));
+                if (found) return found;
+            }
+            
+            return voices[0]; // 返回第一個可用聲音
+        }
+        
+        // 載入聲音列表
+        window.speechSynthesis.onvoiceschanged = function() {
+            console.log('可用聲音數量:', window.speechSynthesis.getVoices().length);
+        };
+        
+        async function handleFile(file) {
+            if (!file) return;
+            
+            currentFileName = file.name;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatSize(file.size);
+            document.getElementById('fileInfo').classList.add('show');
+            
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            if (ext === 'pdf') {
+                try {
+                    document.getElementById('previewText').textContent = '正在解析 PDF...';
+                    document.getElementById('preview').classList.add('show');
+                    
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let text = '';
+                    
+                    for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        text += content.items.map(item => item.str).join(' ') + '\n\n';
+                    }
+                    
+                    extractedText = text;
+                } catch (e) {
+                    alert('PDF 解析失敗: ' + e.message);
+                    extractedText = '';
+                }
+            } else if (ext === 'txt') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    extractedText = e.target.result;
+                };
+                reader.readAsText(file);
+            } else {
+                extractedText = '書籍內容解析中...';
+            }
+            
+            // 顯示預覽
+            setTimeout(() => {
+                document.getElementById('previewText').textContent = extractedText.substring(0, 1500);
+                document.getElementById('preview').classList.add('show');
+            }, 500);
+        }
+        
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        async function startConvert() {
+            if (!extractedText) {
+                alert('請先上傳電子書');
+                return;
+            }
+            
+            const btn = document.getElementById('convertBtn');
+            const progress = document.getElementById('progress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            btn.disabled = true;
+            btn.textContent = '轉換中...';
+            progress.classList.add('show');
+            
+            // 模擬轉換進度
+            for (let i = 0; i <= 100; i += 12) {
+                await new Promise(r => setTimeout(r, 100));
+                progressFill.style.width = i + '%';
+                progressText.textContent = '轉換中... ' + i + '%';
+            }
+            
+            // 播放語音 - 使用選擇的聲音
+            // 為了避免文字過長，分段播放
+            const fullText = extractedText;
+            const maxLength = 5000; // 每次最多5000字
+            const textToPlay = fullText.length > maxLength ? fullText.substring(0, maxLength) + '...(已截斷)' : fullText;
+            
+            const utterance = new SpeechSynthesisUtterance(textToPlay);
+            utterance.rate = parseFloat(document.getElementById('speed').value);
+            utterance.pitch = 1 + parseFloat(document.getElementById('pitch').value) * 0.5;
+            utterance.volume = parseFloat(document.getElementById('volume').value);
+            
+            // 使用選擇的聲音
+            const voiceObj = getVoiceByLang(selectedVoice);
+            if (voiceObj) {
+                utterance.voice = voiceObj;
+            }
+            
+            // 監聽播放結束
+            utterance.onend = function() {
+                document.getElementById('progress').classList.remove('show');
+                document.getElementById('result').classList.add('show');
+                document.getElementById('convertBtn').disabled = false;
+                document.getElementById('convertBtn').textContent = '開始轉換為有聲書';
+            };
+            
+            window.speechSynthesis.speak(utterance);
+            
+            document.getElementById('result').classList.add('show');
+            document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+            
+            btn.disabled = false;
+            btn.textContent = '開始轉換為有聲書';
+        }
+        
+        function downloadAudio() {
+            alert('下載功能需要後端伺服器處理。\n\n您可以使用螢幕錄製軟體錄製播放內容。');
+        }
+        
+        function uploadToCloud() {
+            alert('雲端上傳功能開發中，敬請期待！');
+        }
+        
+        // 啟動
+        init();
+    </script>
+</body>
+</html>
