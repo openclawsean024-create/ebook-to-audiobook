@@ -5,187 +5,316 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>有聲書轉換器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root { --primary: #0071e3; --accent: #34c759; --text: #1d1d1f; --text2: #86868b; --bg: #f5f5f7; --card: #fff; --border: #d2d2d7; }
-        body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-        
-        .header { background: linear-gradient(135deg, #667eea, #764ba2); padding: 20px; text-align: center; color: #fff; }
-        .header h1 { font-size: 22px; font-weight: 700; }
-        .header p { font-size: 12px; opacity: 0.9; margin-top: 4px; }
-        
-        .container { max-width: 500px; margin: 0 auto; padding: 16px; }
-        
-        .card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-        .title { font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .step { background: var(--primary); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
-        
-        /* 上傳區域 */
-        .upload-box { border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; background: var(--bg); }
-        .upload-box:active { background: rgba(0,113,227,0.1); }
-        .upload-box .icon { font-size: 36px; }
-        .upload-box .text { font-size: 14px; margin-top: 8px; }
-        .upload-box .sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
-        
-        /* 檔案資訊 */
-        .file-info { display: none; margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 10px; }
-        .file-info.show { display: block; }
-        .file-name { font-weight: 600; font-size: 13px; }
-        .file-size { font-size: 11px; color: var(--text2); margin-top: 2px; }
-        
-        /* 文字預覽 */
-        .preview { display: none; max-height: 150px; overflow-y: auto; background: var(--bg); border-radius: 10px; padding: 12px; margin-top: 12px; font-size: 12px; line-height: 1.6; }
-        .preview.show { display: block; }
-        
-        /* 語音選擇 */
-        .voice-list { display: flex; flex-direction: column; gap: 8px; }
-        .voice-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 2px solid var(--border); border-radius: 10px; transition: 0.2s; }
-        .voice-item:active { background: var(--bg); }
-        .voice-item.selected { border-color: var(--primary); background: rgba(0,113,227,0.08); }
+        :root {
+            --primary: #4f46e5;
+            --primary-2: #7c3aed;
+            --accent: #10b981;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+            --text: #111827;
+            --sub: #6b7280;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --border: #d1d5db;
+        }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(180deg, #eef2ff 0%, #f9fafb 180px, #f3f4f6 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            padding: 26px 18px 32px;
+            text-align: center;
+            color: #fff;
+            box-shadow: 0 10px 30px rgba(79, 70, 229, 0.25);
+        }
+        .header h1 { font-size: 28px; font-weight: 800; letter-spacing: 0.5px; }
+        .header p { font-size: 13px; opacity: 0.95; margin-top: 8px; }
+        .container { max-width: 560px; margin: -14px auto 0; padding: 16px; }
+        .card {
+            background: var(--card);
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+            border: 1px solid rgba(255,255,255,0.65);
+        }
+        .title { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .step {
+            background: var(--primary);
+            color: #fff;
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+        .upload-box {
+            border: 2px dashed #a5b4fc;
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+            background: #eef2ff;
+        }
+        .upload-box p { font-size: 13px; color: var(--sub); margin-top: 8px; }
+        .upload-box strong { display: block; color: var(--text); font-size: 15px; }
+        .file-input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 14px;
+            cursor: pointer;
+        }
+        .file-info, .preview, .stats, .segments-wrap, .result { display: none; }
+        .show { display: block; }
+        .file-info {
+            margin-top: 14px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+        .file-name { font-weight: 700; font-size: 13px; }
+        .file-size, .file-meta { font-size: 12px; color: var(--sub); margin-top: 4px; }
+        .status-box {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--sub);
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 12px;
+            line-height: 1.6;
+        }
+        .status-box strong { color: var(--text); }
+        .preview {
+            margin-top: 12px;
+            max-height: 220px;
+            overflow-y: auto;
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            border: 1px solid #e5e7eb;
+        }
+        .badge { display: inline-block; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; margin: 0 6px 8px 0; }
+        .badge.on { background: rgba(16,185,129,0.14); color: #059669; }
+        .badge.info { background: rgba(79,70,229,0.12); color: var(--primary); }
+        .voice-list { display: flex; flex-direction: column; gap: 10px; }
+        .voice-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: 0.2s ease;
+            background: #fff;
+            cursor: pointer;
+        }
+        .voice-item.selected { border-color: var(--primary); background: rgba(79,70,229,0.06); }
         .voice-info { display: flex; align-items: center; gap: 10px; }
-        .voice-icon { width: 36px; height: 36px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
-        .voice-name { font-weight: 600; font-size: 14px; }
-        .voice-lang { font-size: 11px; color: var(--text2); }
-        
-        .preview-btn { padding: 8px 16px; background: var(--primary); color: #fff; border: none; border-radius: 20px; font-size: 12px; cursor: pointer; }
-        
-        /* 設定 */
+        .voice-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .voice-name { font-size: 14px; font-weight: 700; }
+        .voice-lang { font-size: 11px; color: var(--sub); margin-top: 2px; }
+        .preview-btn, .mini-btn, .btn {
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            border-radius: 12px;
+        }
+        .preview-btn {
+            padding: 9px 14px;
+            background: #eef2ff;
+            color: var(--primary);
+            font-size: 12px;
+            flex-shrink: 0;
+        }
         .settings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         .setting { text-align: center; }
-        .setting label { font-size: 11px; font-weight: 500; display: block; margin-bottom: 6px; }
+        .setting label { font-size: 11px; font-weight: 700; display: block; margin-bottom: 6px; }
         .setting input { width: 100%; }
-        .setting .val { font-size: 11px; color: var(--text2); margin-top: 4px; }
-        
-        /* 按鈕 */
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
-        .btn-primary { background: var(--primary); color: #fff; }
-        .btn-primary:active { background: #0063c9; }
-        .btn-primary:disabled { background: var(--text2); }
-        
-        .btn-secondary { background: var(--accent); color: #fff; margin-top: 10px; }
-        
-        /* 進度 */
+        .setting .val { font-size: 11px; color: var(--sub); margin-top: 4px; }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(79, 70, 229, 0.18);
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+        .btn-secondary { background: #e5e7eb; color: var(--text); box-shadow: none; }
+        .btn-green { background: linear-gradient(135deg, #10b981, #059669); }
         .progress { display: none; margin-top: 14px; }
         .progress.show { display: block; }
-        .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); width: 0%; }
-        .progress-text { text-align: center; font-size: 12px; color: var(--text2); margin-top: 8px; }
-        
-        /* 結果 */
-        .result { display: none; }
-        .result.show { display: block; }
-        .result audio { width: 100%; margin-top: 12px; }
-        
+        .progress-bar { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.25s ease; }
+        .progress-text { text-align: center; font-size: 12px; color: var(--sub); margin-top: 8px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .stat {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px 10px;
+            text-align: center;
+        }
+        .stat .num { display: block; font-size: 18px; font-weight: 800; }
+        .stat .label { display: block; font-size: 11px; color: var(--sub); margin-top: 4px; }
+        .segments-wrap { margin-top: 12px; }
+        .segment-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 8px; color: var(--sub); }
+        .segment-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.75;
+            min-height: 100px;
+            white-space: pre-wrap;
+        }
+        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+        .controls .mini-btn {
+            padding: 11px 8px;
+            background: #eef2ff;
+            color: var(--primary);
+            font-size: 12px;
+        }
+        .controls .mini-btn.warn { background: #fff7ed; color: #c2410c; }
+        .controls .mini-btn.danger { background: #fef2f2; color: var(--danger); }
+        .result-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 14px; padding: 14px; }
+        .result-title { font-size: 15px; font-weight: 800; color: #065f46; }
+        .result-note { font-size: 12px; color: #047857; line-height: 1.7; margin-top: 8px; }
         .result-btns { display: flex; gap: 10px; margin-top: 12px; }
-        .result-btns .btn { flex: 1; }
-        
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 10px; margin-right: 6px; }
-        .badge.on { background: rgba(52,199,89,0.15); color: var(--accent); }
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(17,24,39,0.92);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.2s ease;
+            z-index: 20;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        @media (max-width: 480px) {
+            .settings, .stats-grid, .controls { grid-template-columns: 1fr; }
+            .result-btns { flex-direction: column; }
+            .voice-item { align-items: flex-start; flex-direction: column; }
+            .preview-btn { width: 100%; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>有聲書轉換器</h1>
-        <p>v3.9 - 修復版</p>
+        <p>v4.0 Demo - EPUB / PDF / TXT 解析＋分段朗讀控制</p>
     </div>
-    
+
     <div class="container">
-        <!-- 狀態 -->
         <div class="card">
             <div class="title"><span class="step">✓</span>功能狀態</div>
             <span class="badge on">PDF</span>
             <span class="badge on">EPUB</span>
             <span class="badge on">TXT</span>
-            <span class="badge on">v3.9</span>
+            <span class="badge info">瀏覽器朗讀</span>
+            <span class="badge info">分段播放</span>
         </div>
-        
-        <!-- 1. 上傳 -->
+
         <div class="card">
             <div class="title"><span class="step">1</span>上傳電子書</div>
-            
-            <!-- 直接用可見的 file input -->
-            <input type="file" id="fileInput" accept=".pdf,.epub,.txt" style="display:block; width:100%; padding:12px; border:2px solid var(--primary); border-radius:10px; background:var(--primary); color:#fff; font-size:14px; font-weight:600; text-align:center; cursor:pointer; margin-bottom:12px;" onclick="this.value=''" onchange="handleFile(this.files[0])">
-            
+            <div class="upload-box">
+                <strong>支援 PDF / EPUB / TXT</strong>
+                <p>上傳後會先抽取文字、切成段落，再用瀏覽器語音朗讀。</p>
+                <input type="file" id="fileInput" class="file-input" accept=".pdf,.epub,.txt" onclick="this.value=''" onchange="handleFile(this.files[0])">
+            </div>
+
             <div class="file-info" id="fileInfo">
                 <div class="file-name" id="fileName"></div>
                 <div class="file-size" id="fileSize"></div>
+                <div class="file-meta" id="fileMeta"></div>
             </div>
-            
-            <div class="preview" id="preview">
-                <strong>文字預覽：</strong>
-                <div id="previewText" style="margin-top:8px;"></div>
-            </div>
+
+            <div class="status-box" id="statusBox"><strong>待命中：</strong>請先上傳一本電子書。</div>
+            <div class="preview" id="preview"></div>
         </div>
-        
-        <!-- 2. 說書人 -->
+
         <div class="card">
             <div class="title"><span class="step">2</span>選擇說書人</div>
             <div class="voice-list">
-                <div class="voice-item selected" data-voice="zh-CN" onclick="selectVoice(this)">
+                <div class="voice-item selected" data-voice="zh-CN-Xiaoxiao" onclick="selectVoice(this)">
                     <div class="voice-info">
                         <div class="voice-icon">👩</div>
-                        <div>
-                            <div class="voice-name">曉曉</div>
-                            <div class="voice-lang">中文-女聲</div>
-                        </div>
+                        <div><div class="voice-name">曉曉</div><div class="voice-lang">中文・溫和敘事</div></div>
                     </div>
-                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'zh-CN')">試聽</button>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'zh-CN-Xiaoxiao')">試聽</button>
                 </div>
-                
                 <div class="voice-item" data-voice="zh-CN-Yunxi" onclick="selectVoice(this)">
                     <div class="voice-info">
                         <div class="voice-icon">👨</div>
-                        <div>
-                            <div class="voice-name">雲希</div>
-                            <div class="voice-lang">中文-男聲</div>
-                        </div>
+                        <div><div class="voice-name">雲希</div><div class="voice-lang">中文・男聲敘事</div></div>
                     </div>
                     <button type="button" class="preview-btn" onclick="previewVoice(event, 'zh-CN-Yunxi')">試聽</button>
                 </div>
-                
-                <div class="voice-item" data-voice="en-US" onclick="selectVoice(this)">
+                <div class="voice-item" data-voice="en-US-Jenny" onclick="selectVoice(this)">
                     <div class="voice-info">
-                        <div class="voice-icon">👩</div>
-                        <div>
-                            <div class="voice-name">Jenny</div>
-                            <div class="voice-lang">英文-女聲</div>
-                        </div>
+                        <div class="voice-icon">🎙️</div>
+                        <div><div class="voice-name">Jenny</div><div class="voice-lang">English narration</div></div>
                     </div>
-                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'en-US')">試聽</button>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'en-US-Jenny')">試聽</button>
                 </div>
-                
-                <div class="voice-item" data-voice="ja-JP" onclick="selectVoice(this)">
+                <div class="voice-item" data-voice="ja-JP-Nanami" onclick="selectVoice(this)">
                     <div class="voice-info">
-                        <div class="voice-icon">👩</div>
-                        <div>
-                            <div class="voice-name">七海</div>
-                            <div class="voice-lang">日文-女聲</div>
-                        </div>
+                        <div class="voice-icon">🌸</div>
+                        <div><div class="voice-name">七海</div><div class="voice-lang">日本語ナレーション</div></div>
                     </div>
-                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'ja-JP')">試聽</button>
-                </div>
-                
-                <div class="voice-item" data-voice="ko-KR" onclick="selectVoice(this)">
-                    <div class="voice-info">
-                        <div class="voice-icon">👩</div>
-                        <div>
-                            <div class="voice-name">SunHi</div>
-                            <div class="voice-lang">韓文-女聲</div>
-                        </div>
-                    </div>
-                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'ko-KR')">試聽</button>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'ja-JP-Nanami')">試聽</button>
                 </div>
             </div>
         </div>
-        
-        <!-- 3. 設定 -->
+
         <div class="card">
             <div class="title"><span class="step">3</span>調整設定</div>
             <div class="settings">
                 <div class="setting">
                     <label>語速</label>
-                    <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1" oninput="updateSetting('speed')">
+                    <input type="range" id="speed" min="0.6" max="1.8" step="0.1" value="1" oninput="updateSetting('speed')">
                     <div class="val" id="speedVal">1.0x</div>
                 </div>
                 <div class="setting">
@@ -195,41 +324,71 @@
                 </div>
                 <div class="setting">
                     <label>音量</label>
-                    <input type="range" id="volume" min="0" max="1" step="0.1" value="1" oninput="updateSetting('volume')">
+                    <input type="range" id="volume" min="0.2" max="1" step="0.1" value="1" oninput="updateSetting('volume')">
                     <div class="val" id="volumeVal">100%</div>
                 </div>
             </div>
         </div>
-        
-        <!-- 轉換 -->
-        <button type="button" class="btn btn-primary" id="convertBtn" onclick="startConvert()">開始轉換為有聲書</button>
-        
+
+        <button type="button" class="btn" id="convertBtn" onclick="startConvert()">開始建立朗讀段落</button>
+
         <div class="progress" id="progress">
             <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
             <div class="progress-text" id="progressText">準備中...</div>
         </div>
-        
-        <!-- 結果 -->
+
+        <div class="card stats" id="stats">
+            <div class="title"><span class="step">4</span>朗讀摘要</div>
+            <div class="stats-grid">
+                <div class="stat"><span class="num" id="segmentCount">0</span><span class="label">段落數</span></div>
+                <div class="stat"><span class="num" id="currentSegmentDisplay">0 / 0</span><span class="label">目前段落</span></div>
+                <div class="stat"><span class="num" id="readingTime">0 分</span><span class="label">預估時長</span></div>
+            </div>
+
+            <div class="segments-wrap" id="segmentsWrap">
+                <div class="segment-head">
+                    <span id="segmentLabel">段落 1</span>
+                    <span id="segmentLength">0 字</span>
+                </div>
+                <div class="segment-box" id="segmentBox">轉換後的段落會顯示在這裡。</div>
+                <div class="controls">
+                    <button class="mini-btn" type="button" onclick="prevSegment()">上一段</button>
+                    <button class="mini-btn" type="button" onclick="togglePlayPause()" id="playPauseBtn">播放</button>
+                    <button class="mini-btn" type="button" onclick="nextSegment()">下一段</button>
+                    <button class="mini-btn warn" type="button" onclick="resumeSpeech()">繼續</button>
+                    <button class="mini-btn warn" type="button" onclick="pauseSpeech()">暫停</button>
+                    <button class="mini-btn danger" type="button" onclick="stopSpeech()">停止</button>
+                </div>
+            </div>
+        </div>
+
         <div class="result" id="result">
-            <div class="card">
-                <div class="title"><span class="step">✓</span>轉換完成！</div>
-                <audio id="audioPlayer" controls></audio>
+            <div class="result-card">
+                <div class="result-title">Demo 版轉換完成</div>
+                <div class="result-note" id="resultNote">目前版本使用瀏覽器語音逐段朗讀，適合驗證流程與 UI。若要真正輸出 MP3，下一階段需要串接後端 TTS 服務。</div>
                 <div class="result-btns">
-                    <button type="button" class="btn btn-primary" onclick="downloadAudio()">下載</button>
-                    <button type="button" class="btn btn-secondary" onclick="uploadToCloud()">雲端</button>
+                    <button type="button" class="btn btn-secondary" onclick="downloadAudio()">匯出說明</button>
+                    <button type="button" class="btn btn-green" onclick="downloadText()">下載整理文字</button>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <div class="toast" id="toast"></div>
+
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
-        
-        let selectedVoice = localStorage.getItem('selectedVoice') || 'zh-CN';
+
+        let selectedVoice = localStorage.getItem('selectedVoice') || 'zh-CN-Xiaoxiao';
         let extractedText = '';
         let currentFileName = '';
-        
-        // 初始化設定
+        let segments = [];
+        let currentSegmentIndex = 0;
+        let currentUtterance = null;
+        let isPaused = false;
+        let isPlaying = false;
+        let currentBookMeta = { type: '-', words: 0, title: '-', author: '-' };
+
         function init() {
             document.getElementById('speed').value = localStorage.getItem('speed') || 1;
             document.getElementById('pitch').value = localStorage.getItem('pitch') || 0;
@@ -237,197 +396,434 @@
             updateSetting('speed');
             updateSetting('pitch');
             updateSetting('volume');
-            
-            // 恢復選擇的語音
             document.querySelectorAll('.voice-item').forEach(el => {
                 el.classList.toggle('selected', el.dataset.voice === selectedVoice);
             });
+            if (window.speechSynthesis) {
+                window.speechSynthesis.getVoices();
+            }
         }
-        
+
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.textContent = text;
+            toast.classList.add('show');
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        function setStatus(text) {
+            document.getElementById('statusBox').innerHTML = text;
+        }
+
         function updateSetting(type) {
             const val = document.getElementById(type).value;
             let display = val + 'x';
             if (type === 'volume') display = Math.round(val * 100) + '%';
-            if (type === 'pitch') display = (val > 0 ? '+' : '') + val;
+            if (type === 'pitch') display = (Number(val) > 0 ? '+' : '') + val;
             document.getElementById(type + 'Val').textContent = display;
             localStorage.setItem(type, val);
         }
-        
+
         function selectVoice(el) {
             document.querySelectorAll('.voice-item').forEach(i => i.classList.remove('selected'));
             el.classList.add('selected');
             selectedVoice = el.dataset.voice;
             localStorage.setItem('selectedVoice', selectedVoice);
+            showToast('已選擇語音：' + el.querySelector('.voice-name').textContent);
         }
-        
-        function previewVoice(event, voice) {
+
+        function previewVoice(event, voiceId) {
             event.stopPropagation();
-            if (window.speechSynthesis.speaking) {
-                window.speechSynthesis.cancel();
-            }
-            
-            const text = '您好，這是語音預覽，請確認這是您喜歡的聲音。';
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = parseFloat(document.getElementById('speed').value);
-            utterance.pitch = 1 + parseFloat(document.getElementById('pitch').value) * 0.5;
-            utterance.volume = parseFloat(document.getElementById('volume').value);
-            
-            // 嘗試使用選擇的聲音
-            const voiceObj = getVoiceByLang(selectedVoice);
-            if (voiceObj) {
-                utterance.voice = voiceObj;
-            }
-            
+            stopSpeech();
+            const text = '您好，這是語音預覽。若聲線自然，就可以直接開始朗讀電子書。';
+            const utterance = buildUtterance(text, voiceId);
+            utterance.onend = function() { isPlaying = false; };
             window.speechSynthesis.speak(utterance);
+            showToast('正在試聽：' + voiceId);
         }
-        
-        // 獲取可用聲音
-        function getVoiceByLang(lang) {
-            const voices = window.speechSynthesis.getVoices();
-            
-            // 語言對應表
-            const langMap = {
-                'zh-CN': ['Chinese', 'Mandarin', 'zh-CN', 'zh-TW', 'zh'],
-                'zh-CN-Yunxi': ['Chinese', 'Mandarin', 'zh-CN', 'zh-TW', 'zh'],
-                'en-US': ['en-US', 'English', 'en'],
-                'ja-JP': ['ja-JP', 'Japanese', 'ja'],
-                'ko-KR': ['ko-KR', 'Korean', 'ko']
-            };
-            
-            const keywords = langMap[lang] || [lang];
-            
-            // 嘗試找到匹配的聲音
-            for (const keyword of keywords) {
-                const found = voices.find(v => v.lang.toLowerCase().includes(keyword.toLowerCase()));
-                if (found) return found;
-            }
-            
-            return voices[0]; // 返回第一個可用聲音
+
+        function normalizeText(text) {
+            return (text || '')
+                .replace(/\r/g, '\n')
+                .replace(/\u0000/g, '')
+                .replace(/[ \t]+/g, ' ')
+                .replace(/\n{3,}/g, '\n\n')
+                .replace(/[ ]+\n/g, '\n')
+                .trim();
         }
-        
-        // 載入聲音列表
-        window.speechSynthesis.onvoiceschanged = function() {
-            console.log('可用聲音數量:', window.speechSynthesis.getVoices().length);
-        };
-        
-        async function handleFile(file) {
-            if (!file) return;
-            
-            currentFileName = file.name;
-            document.getElementById('fileName').textContent = file.name;
-            document.getElementById('fileSize').textContent = formatSize(file.size);
-            document.getElementById('fileInfo').classList.add('show');
-            
-            const ext = file.name.split('.').pop().toLowerCase();
-            
-            if (ext === 'pdf') {
-                try {
-                    document.getElementById('previewText').textContent = '正在解析 PDF...';
-                    document.getElementById('preview').classList.add('show');
-                    
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                    let text = '';
-                    
-                    for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
-                        const page = await pdf.getPage(i);
-                        const content = await page.getTextContent();
-                        text += content.items.map(item => item.str).join(' ') + '\n\n';
+
+        function splitIntoSegments(text, maxLength = 900) {
+            const clean = normalizeText(text);
+            if (!clean) return [];
+            const paragraphs = clean.split(/\n\s*\n/).map(t => t.trim()).filter(Boolean);
+            const result = [];
+            let buffer = '';
+            for (const para of paragraphs) {
+                if ((buffer + '\n\n' + para).trim().length <= maxLength) {
+                    buffer = buffer ? buffer + '\n\n' + para : para;
+                } else {
+                    if (buffer) result.push(buffer);
+                    if (para.length <= maxLength) {
+                        buffer = para;
+                    } else {
+                        const sentences = para.split(/(?<=[。！？.!?])/).map(s => s.trim()).filter(Boolean);
+                        let sentenceBuffer = '';
+                        for (const sentence of sentences) {
+                            if ((sentenceBuffer + ' ' + sentence).trim().length <= maxLength) {
+                                sentenceBuffer = sentenceBuffer ? sentenceBuffer + ' ' + sentence : sentence;
+                            } else {
+                                if (sentenceBuffer) result.push(sentenceBuffer);
+                                if (sentence.length > maxLength) {
+                                    for (let i = 0; i < sentence.length; i += maxLength) {
+                                        result.push(sentence.slice(i, i + maxLength));
+                                    }
+                                    sentenceBuffer = '';
+                                } else {
+                                    sentenceBuffer = sentence;
+                                }
+                            }
+                        }
+                        buffer = sentenceBuffer;
                     }
-                    
-                    extractedText = text;
-                } catch (e) {
-                    alert('PDF 解析失敗: ' + e.message);
-                    extractedText = '';
                 }
-            } else if (ext === 'txt') {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    extractedText = e.target.result;
-                };
-                reader.readAsText(file);
-            } else {
-                extractedText = '書籍內容解析中...';
             }
-            
-            // 顯示預覽
-            setTimeout(() => {
-                document.getElementById('previewText').textContent = extractedText.substring(0, 1500);
-                document.getElementById('preview').classList.add('show');
-            }, 500);
+            if (buffer) result.push(buffer);
+            return result.filter(Boolean);
         }
-        
+
+        function estimateMinutes(text) {
+            const chars = normalizeText(text).length;
+            const speed = parseFloat(document.getElementById('speed').value || '1');
+            const charsPerMinute = 320 * speed;
+            return Math.max(1, Math.ceil(chars / charsPerMinute));
+        }
+
+        function updatePreview(text) {
+            const preview = document.getElementById('preview');
+            preview.textContent = text ? text.slice(0, 1800) + (text.length > 1800 ? '\n\n…（預覽已截斷）' : '') : '未能抽取到文字內容。';
+            preview.classList.add('show');
+        }
+
         function formatSize(bytes) {
             if (bytes < 1024) return bytes + ' B';
             if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
             return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
         }
-        
-        async function startConvert() {
+
+        function updateFileMeta(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = '檔案大小：' + formatSize(file.size);
+            document.getElementById('fileMeta').textContent = `格式：${currentBookMeta.type}｜標題：${currentBookMeta.title}｜作者：${currentBookMeta.author}`;
+            document.getElementById('fileInfo').classList.add('show');
+        }
+
+        function setProgress(percent, text) {
+            document.getElementById('progress').classList.add('show');
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = text;
+        }
+
+        function hideProgress() {
+            document.getElementById('progress').classList.remove('show');
+        }
+
+        async function handleFile(file) {
+            if (!file) return;
+            stopSpeech();
+            currentFileName = file.name;
+            extractedText = '';
+            segments = [];
+            currentSegmentIndex = 0;
+            currentBookMeta = { type: file.name.split('.').pop().toUpperCase(), words: 0, title: file.name.replace(/\.[^.]+$/, ''), author: '-' };
+            updateFileMeta(file);
+            setStatus('<strong>解析中：</strong>正在讀取檔案內容，請稍候。');
+            setProgress(10, '開始解析檔案...');
+
+            try {
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (ext === 'pdf') {
+                    extractedText = await extractPdfText(file);
+                } else if (ext === 'txt') {
+                    extractedText = await extractTxtText(file);
+                } else if (ext === 'epub') {
+                    extractedText = await extractEpubText(file);
+                } else {
+                    throw new Error('目前僅支援 PDF / EPUB / TXT');
+                }
+
+                extractedText = normalizeText(extractedText);
+                currentBookMeta.words = extractedText.length;
+                updateFileMeta(file);
+                updatePreview(extractedText);
+                hideProgress();
+                setStatus(`<strong>解析完成：</strong>共抽取 ${extractedText.length.toLocaleString()} 字，已可進行分段朗讀。`);
+                showToast('檔案解析完成');
+            } catch (error) {
+                hideProgress();
+                extractedText = '';
+                updatePreview('');
+                setStatus('<strong>解析失敗：</strong>' + error.message);
+                alert('解析失敗：' + error.message);
+            }
+        }
+
+        async function extractTxtText(file) {
+            setProgress(35, '讀取 TXT 內容...');
+            const buffer = await file.arrayBuffer();
+            const decoder = new TextDecoder('utf-8');
+            return decoder.decode(buffer);
+        }
+
+        async function extractPdfText(file) {
+            setProgress(25, 'PDF 載入中...');
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let text = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                setProgress(25 + Math.round((i / pdf.numPages) * 55), `解析 PDF 第 ${i}/${pdf.numPages} 頁...`);
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                const pageText = content.items.map(item => item.str).join(' ');
+                text += pageText + '\n\n';
+            }
+            return text;
+        }
+
+        async function extractEpubText(file) {
+            setProgress(20, '解壓 EPUB 中...');
+            const zip = await JSZip.loadAsync(await file.arrayBuffer());
+            const containerXml = await zip.file('META-INF/container.xml')?.async('string');
+            if (!containerXml) throw new Error('找不到 EPUB 容器資訊');
+
+            const containerDoc = new DOMParser().parseFromString(containerXml, 'application/xml');
+            const rootFile = containerDoc.querySelector('rootfile')?.getAttribute('full-path');
+            if (!rootFile) throw new Error('找不到 OPF 路徑');
+
+            const opfString = await zip.file(rootFile)?.async('string');
+            if (!opfString) throw new Error('讀取 OPF 失敗');
+            const opfDoc = new DOMParser().parseFromString(opfString, 'application/xml');
+            currentBookMeta.title = opfDoc.querySelector('metadata > title, dc\\:title')?.textContent?.trim() || currentBookMeta.title;
+            currentBookMeta.author = opfDoc.querySelector('metadata > creator, dc\\:creator')?.textContent?.trim() || '-';
+            updateFileMeta(file);
+
+            const basePath = rootFile.includes('/') ? rootFile.substring(0, rootFile.lastIndexOf('/') + 1) : '';
+            const manifest = {};
+            opfDoc.querySelectorAll('manifest > item').forEach(item => {
+                manifest[item.getAttribute('id')] = item.getAttribute('href');
+            });
+
+            const spineIds = Array.from(opfDoc.querySelectorAll('spine > itemref')).map(item => item.getAttribute('idref')).filter(Boolean);
+            const collected = [];
+
+            for (let i = 0; i < spineIds.length; i++) {
+                const id = spineIds[i];
+                const href = manifest[id];
+                if (!href) continue;
+                const fullPath = resolvePath(basePath, href);
+                const entry = zip.file(fullPath);
+                if (!entry) continue;
+                setProgress(25 + Math.round((i / Math.max(spineIds.length, 1)) * 55), `解析 EPUB 章節 ${i + 1}/${spineIds.length}...`);
+                const html = await entry.async('string');
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const text = doc.body ? doc.body.textContent : doc.documentElement.textContent;
+                if (text && text.trim()) collected.push(text.trim());
+            }
+
+            if (!collected.length) throw new Error('EPUB 內容抽取失敗');
+            return collected.join('\n\n');
+        }
+
+        function resolvePath(base, relative) {
+            const stack = (base || '').split('/').filter(Boolean);
+            const parts = (relative || '').split('/');
+            stack.pop?.();
+            const baseDir = (base || '').split('/').filter(Boolean);
+            let pathParts = baseDir;
+            for (const part of parts) {
+                if (!part || part === '.') continue;
+                if (part === '..') pathParts.pop();
+                else pathParts.push(part);
+            }
+            return pathParts.join('/');
+        }
+
+        function buildUtterance(text, voiceId = selectedVoice) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = parseFloat(document.getElementById('speed').value);
+            utterance.pitch = 1 + parseFloat(document.getElementById('pitch').value) * 0.35;
+            utterance.volume = parseFloat(document.getElementById('volume').value);
+            const voice = getVoiceByLang(voiceId);
+            if (voice) utterance.voice = voice;
+            return utterance;
+        }
+
+        function getVoiceByLang(voiceId) {
+            const voices = window.speechSynthesis.getVoices() || [];
+            const map = {
+                'zh-CN-Xiaoxiao': ['zh-CN', 'zh-TW', 'Chinese', 'Mandarin'],
+                'zh-CN-Yunxi': ['zh-CN', 'zh-TW', 'Chinese', 'Mandarin'],
+                'en-US-Jenny': ['en-US', 'English'],
+                'ja-JP-Nanami': ['ja-JP', 'Japanese']
+            };
+            const keywords = map[voiceId] || [voiceId];
+            for (const keyword of keywords) {
+                const found = voices.find(v => (v.lang || '').toLowerCase().includes(keyword.toLowerCase()) || (v.name || '').toLowerCase().includes(keyword.toLowerCase()));
+                if (found) return found;
+            }
+            return voices[0] || null;
+        }
+
+        function startConvert() {
             if (!extractedText) {
-                alert('請先上傳電子書');
+                alert('請先上傳並解析電子書');
                 return;
             }
-            
+            stopSpeech();
             const btn = document.getElementById('convertBtn');
-            const progress = document.getElementById('progress');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            
             btn.disabled = true;
-            btn.textContent = '轉換中...';
-            progress.classList.add('show');
-            
-            // 模擬轉換進度
-            for (let i = 0; i <= 100; i += 12) {
-                await new Promise(r => setTimeout(r, 100));
-                progressFill.style.width = i + '%';
-                progressText.textContent = '轉換中... ' + i + '%';
-            }
-            
-            // 播放語音 - 使用選擇的聲音
-            // 為了避免文字過長，分段播放
-            const fullText = extractedText;
-            const maxLength = 5000; // 每次最多5000字
-            const textToPlay = fullText.length > maxLength ? fullText.substring(0, maxLength) + '...(已截斷)' : fullText;
-            
-            const utterance = new SpeechSynthesisUtterance(textToPlay);
-            utterance.rate = parseFloat(document.getElementById('speed').value);
-            utterance.pitch = 1 + parseFloat(document.getElementById('pitch').value) * 0.5;
-            utterance.volume = parseFloat(document.getElementById('volume').value);
-            
-            // 使用選擇的聲音
-            const voiceObj = getVoiceByLang(selectedVoice);
-            if (voiceObj) {
-                utterance.voice = voiceObj;
-            }
-            
-            // 監聽播放結束
-            utterance.onend = function() {
-                document.getElementById('progress').classList.remove('show');
+            setProgress(15, '切分章節與段落中...');
+            setTimeout(() => {
+                segments = splitIntoSegments(extractedText, 900);
+                currentSegmentIndex = 0;
+                document.getElementById('segmentCount').textContent = segments.length;
+                document.getElementById('readingTime').textContent = estimateMinutes(extractedText) + ' 分';
+                document.getElementById('stats').classList.add('show');
+                document.getElementById('segmentsWrap').classList.add('show');
                 document.getElementById('result').classList.add('show');
-                document.getElementById('convertBtn').disabled = false;
-                document.getElementById('convertBtn').textContent = '開始轉換為有聲書';
+                renderCurrentSegment();
+                setProgress(100, `已建立 ${segments.length} 個朗讀段落`);
+                setTimeout(hideProgress, 600);
+                btn.disabled = false;
+                setStatus(`<strong>轉換完成：</strong>已切成 ${segments.length} 段，可逐段播放、暫停與切換。`);
+                showToast('已建立朗讀段落');
+            }, 400);
+        }
+
+        function renderCurrentSegment() {
+            const total = segments.length;
+            if (!total) return;
+            const text = segments[currentSegmentIndex] || '';
+            document.getElementById('currentSegmentDisplay').textContent = `${currentSegmentIndex + 1} / ${total}`;
+            document.getElementById('segmentLabel').textContent = `段落 ${currentSegmentIndex + 1}`;
+            document.getElementById('segmentLength').textContent = `${text.length.toLocaleString()} 字`;
+            document.getElementById('segmentBox').textContent = text;
+            document.getElementById('playPauseBtn').textContent = isPlaying && !isPaused ? '暫停' : '播放';
+        }
+
+        function speakSegment(index) {
+            if (!segments.length) return;
+            stopSpeech(false);
+            currentSegmentIndex = Math.max(0, Math.min(index, segments.length - 1));
+            const text = segments[currentSegmentIndex];
+            currentUtterance = buildUtterance(text);
+            currentUtterance.onend = function() {
+                isPlaying = false;
+                isPaused = false;
+                if (currentSegmentIndex < segments.length - 1) {
+                    currentSegmentIndex += 1;
+                    renderCurrentSegment();
+                    speakSegment(currentSegmentIndex);
+                } else {
+                    renderCurrentSegment();
+                    showToast('全書段落朗讀完成');
+                }
             };
-            
-            window.speechSynthesis.speak(utterance);
-            
-            document.getElementById('result').classList.add('show');
-            document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
-            
-            btn.disabled = false;
-            btn.textContent = '開始轉換為有聲書';
+            currentUtterance.onerror = function() {
+                isPlaying = false;
+                isPaused = false;
+                renderCurrentSegment();
+            };
+            isPlaying = true;
+            isPaused = false;
+            renderCurrentSegment();
+            window.speechSynthesis.speak(currentUtterance);
+            showToast(`播放第 ${currentSegmentIndex + 1} 段`);
         }
-        
+
+        function togglePlayPause() {
+            if (!segments.length) {
+                showToast('請先建立朗讀段落');
+                return;
+            }
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                pauseSpeech();
+            } else if (window.speechSynthesis.paused) {
+                resumeSpeech();
+            } else {
+                speakSegment(currentSegmentIndex);
+            }
+        }
+
+        function pauseSpeech() {
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                window.speechSynthesis.pause();
+                isPaused = true;
+                isPlaying = true;
+                renderCurrentSegment();
+                showToast('已暫停');
+            }
+        }
+
+        function resumeSpeech() {
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+                isPaused = false;
+                isPlaying = true;
+                renderCurrentSegment();
+                showToast('繼續播放');
+            } else if (segments.length && !window.speechSynthesis.speaking) {
+                speakSegment(currentSegmentIndex);
+            }
+        }
+
+        function stopSpeech(resetToast = true) {
+            window.speechSynthesis.cancel();
+            currentUtterance = null;
+            isPaused = false;
+            isPlaying = false;
+            renderCurrentSegment();
+            if (resetToast) showToast('已停止朗讀');
+        }
+
+        function nextSegment() {
+            if (!segments.length) return;
+            const target = Math.min(currentSegmentIndex + 1, segments.length - 1);
+            currentSegmentIndex = target;
+            renderCurrentSegment();
+            if (isPlaying || window.speechSynthesis.speaking || window.speechSynthesis.paused) speakSegment(target);
+        }
+
+        function prevSegment() {
+            if (!segments.length) return;
+            const target = Math.max(currentSegmentIndex - 1, 0);
+            currentSegmentIndex = target;
+            renderCurrentSegment();
+            if (isPlaying || window.speechSynthesis.speaking || window.speechSynthesis.paused) speakSegment(target);
+        }
+
         function downloadAudio() {
-            alert('下載功能需要後端伺服器處理。\n\n您可以使用螢幕錄製軟體錄製播放內容。');
+            alert('目前這個 Demo 版是純前端瀏覽器朗讀，沒有真正產出 MP3 檔。\n\n若要匯出音檔，下一階段需要接後端 TTS（例如 Edge TTS / Azure / ElevenLabs），再把各段語音合成為 MP3。');
         }
-        
-        function uploadToCloud() {
-            alert('雲端上傳功能開發中，敬請期待！');
+
+        function downloadText() {
+            if (!extractedText) {
+                showToast('還沒有可下載的內容');
+                return;
+            }
+            const blob = new Blob([extractedText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (currentFileName.replace(/\.[^.]+$/, '') || 'audiobook') + '-cleaned.txt';
+            a.click();
+            URL.revokeObjectURL(url);
         }
-        
-        // 啟動
+
+        window.speechSynthesis.onvoiceschanged = function() {
+            window.speechSynthesis.getVoices();
+        };
+
         init();
     </script>
 </body>
