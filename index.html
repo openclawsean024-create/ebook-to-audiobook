@@ -415,6 +415,7 @@
         let isPlaying = false;
         let selectedFile = null;
         let latestJob = null;
+        let pollTimer = null;
         let currentBookMeta = { type: '-', words: 0, title: '-', author: '-' };
 
         function init() {
@@ -736,7 +737,7 @@
                 formData.append('rate', toPercentValue(document.getElementById('speed').value, 'speed'));
                 formData.append('volume', toPercentValue(document.getElementById('volume').value, 'volume'));
 
-                setProgress(45, '檔案已送出，後端正在轉換音檔...');
+                setProgress(12, '檔案已送出，已建立背景轉檔任務...');
                 const response = await fetch(`${API_BASE}/api/convert`, {
                     method: 'POST',
                     body: formData
@@ -748,12 +749,7 @@
                 }
 
                 latestJob = data;
-                renderDownloadResult(data);
-                setProgress(100, data.bundle_type === 'segmented_zip' ? '大型電子書已自動分段完成' : '音檔已完成');
-                setStatus(`<strong>轉換完成：</strong>${data.segment_count} 段音檔已產生，可立即下載。`);
-                document.getElementById('result').classList.add('show');
-                showToast('音檔已產生，可直接下載');
-                setTimeout(hideProgress, 800);
+                await pollJobUntilDone(data.job_id);
             } catch (error) {
                 setStatus('<strong>轉檔失敗：</strong>' + error.message);
                 showToast('轉檔失敗');
@@ -773,6 +769,43 @@
             document.getElementById('segmentLength').textContent = `${text.length.toLocaleString()} 字`;
             document.getElementById('segmentBox').textContent = text;
             document.getElementById('playPauseBtn').textContent = isPlaying && !isPaused ? '暫停' : '播放';
+        }
+
+        async function pollJobUntilDone(jobId) {
+            const started = Date.now();
+            while (true) {
+                const response = await fetch(`${API_BASE}/api/jobs/${jobId}`);
+                const job = await response.json();
+                if (!response.ok) throw new Error(job.detail || '查詢任務失敗');
+
+                latestJob = job;
+                const progress = Number(job.progress || 0);
+                setProgress(progress, job.message || '背景轉檔中...');
+                setStatus(`<strong>背景轉檔中：</strong>${escapeHtml(job.message || '處理中')}（${progress}%）`);
+
+                if (job.segment_count) {
+                    document.getElementById('segmentCount').textContent = job.segment_count;
+                }
+
+                if (job.status === 'completed') {
+                    renderDownloadResult(job);
+                    document.getElementById('result').classList.add('show');
+                    setStatus(`<strong>轉換完成：</strong>${job.segment_count} 段音檔已產生，並提供整本 MP3。`);
+                    showToast('轉檔完成，可直接下載');
+                    setTimeout(hideProgress, 800);
+                    return;
+                }
+
+                if (job.status === 'failed') {
+                    throw new Error(job.error || job.message || '轉檔失敗');
+                }
+
+                if (Date.now() - started > 1000 * 60 * 15) {
+                    throw new Error('背景轉檔逾時，請稍後再試');
+                }
+
+                await new Promise(r => setTimeout(r, 1800));
+            }
         }
 
         function mapVoiceForBackend(voiceId) {
@@ -803,14 +836,14 @@
             const title = data.title || currentBookMeta.title || currentFileName;
             const primaryUrl = absolutizeUrl(data.download_url);
 
-            primaryBtn.href = primaryUrl;
+            primaryBtn.href = absolutizeUrl(data.merged_download_url || data.download_url);
             primaryBtn.download = '';
             primaryBtn.style.display = 'inline-block';
-            primaryBtn.textContent = data.bundle_type === 'segmented_zip' ? '下載分段 ZIP' : '下載 MP3';
+            primaryBtn.textContent = '下載整本 MP3';
 
             resultNote.textContent = data.bundle_type === 'segmented_zip'
-                ? `《${title}》內容較大，系統已自動切成 ${data.segment_count} 段並打包 ZIP。`
-                : `《${title}》已完成轉檔，可直接下載 MP3。`;
+                ? `《${title}》內容較大，系統已自動切成 ${data.segment_count} 段，並另外提供整本 MP3 與 ZIP 打包。`
+                : `《${title}》已完成轉檔，可直接下載整本 MP3。`;
 
             downloadList.innerHTML = '';
 
@@ -821,9 +854,22 @@
                     <strong>${escapeHtml(title)}</strong><br>
                     作者：${escapeHtml(data.author || '未知作者')}｜段數：${data.segment_count}｜字數：${Number(data.text_chars || 0).toLocaleString()}
                 </div>
-                <a class="download-link" href="${primaryUrl}" download>主檔下載</a>
+                <a class="download-link" href="${absolutizeUrl(data.merged_download_url || data.download_url)}" download>整本 MP3</a>
             `;
             downloadList.appendChild(summary);
+
+            if (data.bundle_type === 'segmented_zip') {
+                const bundle = document.createElement('div');
+                bundle.className = 'download-item';
+                bundle.innerHTML = `
+                    <div class="download-meta">
+                        <strong>分段打包 ZIP</strong><br>
+                        適合下載所有段落與 manifest
+                    </div>
+                    <a class="download-link" href="${primaryUrl}" download>下載 ZIP</a>
+                `;
+                downloadList.appendChild(bundle);
+            }
 
             if (Array.isArray(data.segments) && data.segments.length > 1) {
                 data.segments.slice(0, 8).forEach(segment => {
