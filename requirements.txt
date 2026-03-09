@@ -1,0 +1,9 @@
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+edge-tts==6.1.19
+gTTS==2.5.4
+pypdf==5.4.0
+ebooklib==0.18
+beautifulsoup4==4.13.3
+lxml==5.3.1
