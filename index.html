@@ -216,6 +216,28 @@
         .result-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 14px; padding: 14px; }
         .result-title { font-size: 15px; font-weight: 800; color: #065f46; }
         .result-note { font-size: 12px; color: #047857; line-height: 1.7; margin-top: 8px; }
+        .download-list { margin-top: 12px; display: grid; gap: 8px; }
+        .download-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid #a7f3d0;
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 12px;
+        }
+        .download-meta { color: #065f46; line-height: 1.5; }
+        .download-link {
+            flex-shrink: 0;
+            text-decoration: none;
+            color: #fff;
+            background: linear-gradient(135deg, #10b981, #059669);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
         .result-btns { display: flex; gap: 10px; margin-top: 12px; }
         .toast {
             position: fixed;
@@ -330,7 +352,7 @@
             </div>
         </div>
 
-        <button type="button" class="btn" id="convertBtn" onclick="startConvert()">開始建立朗讀段落</button>
+        <button type="button" class="btn" id="convertBtn" onclick="startConvert()">開始轉換並產出音檔</button>
 
         <div class="progress" id="progress">
             <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -364,11 +386,12 @@
 
         <div class="result" id="result">
             <div class="result-card">
-                <div class="result-title">Demo 版轉換完成</div>
-                <div class="result-note" id="resultNote">目前版本使用瀏覽器語音逐段朗讀，適合驗證流程與 UI。若要真正輸出 MP3，下一階段需要串接後端 TTS 服務。</div>
+                <div class="result-title">音檔已產生</div>
+                <div class="result-note" id="resultNote">轉檔完成後，這裡會顯示主下載連結與自動分段結果。</div>
+                <div class="download-list" id="downloadList"></div>
                 <div class="result-btns">
-                    <button type="button" class="btn btn-secondary" onclick="downloadAudio()">匯出說明</button>
-                    <button type="button" class="btn btn-green" onclick="downloadText()">下載整理文字</button>
+                    <a id="primaryDownloadBtn" class="btn btn-green" href="#" download style="display:none; text-align:center; text-decoration:none;">下載音檔</a>
+                    <button type="button" class="btn btn-secondary" onclick="downloadText()">下載整理文字</button>
                 </div>
             </div>
         </div>
@@ -387,6 +410,8 @@
         let currentUtterance = null;
         let isPaused = false;
         let isPlaying = false;
+        let selectedFile = null;
+        let latestJob = null;
         let currentBookMeta = { type: '-', words: 0, title: '-', author: '-' };
 
         function init() {
@@ -531,6 +556,11 @@
         async function handleFile(file) {
             if (!file) return;
             stopSpeech();
+            selectedFile = file;
+            latestJob = null;
+            document.getElementById('result').classList.remove('show');
+            document.getElementById('downloadList').innerHTML = '';
+            document.getElementById('primaryDownloadBtn').style.display = 'none';
             currentFileName = file.name;
             extractedText = '';
             segments = [];
@@ -674,30 +704,61 @@
             return voices[0] || null;
         }
 
-        function startConvert() {
-            if (!extractedText) {
+        async function startConvert() {
+            if (!selectedFile || !extractedText) {
                 alert('請先上傳並解析電子書');
                 return;
             }
-            stopSpeech();
+
+            stopSpeech(false);
             const btn = document.getElementById('convertBtn');
             btn.disabled = true;
-            setProgress(15, '切分章節與段落中...');
-            setTimeout(() => {
+            btn.textContent = '轉換中，請稍候...';
+
+            try {
                 segments = splitIntoSegments(extractedText, 900);
                 currentSegmentIndex = 0;
                 document.getElementById('segmentCount').textContent = segments.length;
                 document.getElementById('readingTime').textContent = estimateMinutes(extractedText) + ' 分';
                 document.getElementById('stats').classList.add('show');
                 document.getElementById('segmentsWrap').classList.add('show');
-                document.getElementById('result').classList.add('show');
                 renderCurrentSegment();
-                setProgress(100, `已建立 ${segments.length} 個朗讀段落`);
-                setTimeout(hideProgress, 600);
+
+                setProgress(18, '建立上傳請求中...');
+                setStatus('<strong>轉檔中：</strong>後端正在產生 MP3，檔案大時會自動分段。');
+
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('voice', mapVoiceForBackend(selectedVoice));
+                formData.append('rate', toPercentValue(document.getElementById('speed').value, 'speed'));
+                formData.append('volume', toPercentValue(document.getElementById('volume').value, 'volume'));
+
+                setProgress(45, '檔案已送出，後端正在轉換音檔...');
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '轉檔失敗');
+                }
+
+                latestJob = data;
+                renderDownloadResult(data);
+                setProgress(100, data.bundle_type === 'segmented_zip' ? '大型電子書已自動分段完成' : '音檔已完成');
+                setStatus(`<strong>轉換完成：</strong>${data.segment_count} 段音檔已產生，可立即下載。`);
+                document.getElementById('result').classList.add('show');
+                showToast('音檔已產生，可直接下載');
+                setTimeout(hideProgress, 800);
+            } catch (error) {
+                setStatus('<strong>轉檔失敗：</strong>' + error.message);
+                showToast('轉檔失敗');
+                alert('轉檔失敗：' + error.message);
+            } finally {
                 btn.disabled = false;
-                setStatus(`<strong>轉換完成：</strong>已切成 ${segments.length} 段，可逐段播放、暫停與切換。`);
-                showToast('已建立朗讀段落');
-            }, 400);
+                btn.textContent = '開始轉換並產出音檔';
+            }
         }
 
         function renderCurrentSegment() {
@@ -709,6 +770,81 @@
             document.getElementById('segmentLength').textContent = `${text.length.toLocaleString()} 字`;
             document.getElementById('segmentBox').textContent = text;
             document.getElementById('playPauseBtn').textContent = isPlaying && !isPaused ? '暫停' : '播放';
+        }
+
+        function mapVoiceForBackend(voiceId) {
+            const map = {
+                'zh-CN-Xiaoxiao': 'zh-CN-XiaoxiaoNeural',
+                'zh-CN-Yunxi': 'zh-CN-YunxiNeural',
+                'en-US-Jenny': 'en-US-JennyNeural',
+                'ja-JP-Nanami': 'ja-JP-NanamiNeural'
+            };
+            return map[voiceId] || 'zh-CN-XiaoxiaoNeural';
+        }
+
+        function toPercentValue(value, type) {
+            const num = Number(value);
+            if (type === 'speed') {
+                return `${num >= 1 ? '+' : '-'}${Math.round(Math.abs(num - 1) * 100)}%`;
+            }
+            if (type === 'volume') {
+                return `${num >= 1 ? '+' : '-'}${Math.round(Math.abs(num - 1) * 100)}%`;
+            }
+            return '+0%';
+        }
+
+        function renderDownloadResult(data) {
+            const downloadList = document.getElementById('downloadList');
+            const primaryBtn = document.getElementById('primaryDownloadBtn');
+            const resultNote = document.getElementById('resultNote');
+            const title = data.title || currentBookMeta.title || currentFileName;
+            const primaryUrl = data.download_url;
+
+            primaryBtn.href = primaryUrl;
+            primaryBtn.download = '';
+            primaryBtn.style.display = 'inline-block';
+            primaryBtn.textContent = data.bundle_type === 'segmented_zip' ? '下載分段 ZIP' : '下載 MP3';
+
+            resultNote.textContent = data.bundle_type === 'segmented_zip'
+                ? `《${title}》內容較大，系統已自動切成 ${data.segment_count} 段並打包 ZIP。`
+                : `《${title}》已完成轉檔，可直接下載 MP3。`;
+
+            downloadList.innerHTML = '';
+
+            const summary = document.createElement('div');
+            summary.className = 'download-item';
+            summary.innerHTML = `
+                <div class="download-meta">
+                    <strong>${escapeHtml(title)}</strong><br>
+                    作者：${escapeHtml(data.author || '未知作者')}｜段數：${data.segment_count}｜字數：${Number(data.text_chars || 0).toLocaleString()}
+                </div>
+                <a class="download-link" href="${primaryUrl}" download>主檔下載</a>
+            `;
+            downloadList.appendChild(summary);
+
+            if (Array.isArray(data.segments) && data.segments.length > 1) {
+                data.segments.slice(0, 8).forEach(segment => {
+                    const item = document.createElement('div');
+                    item.className = 'download-item';
+                    item.innerHTML = `
+                        <div class="download-meta">
+                            <strong>第 ${segment.index} 段</strong><br>
+                            ${Number(segment.chars || 0).toLocaleString()} 字
+                        </div>
+                        <a class="download-link" href="${segment.download_url}" download>下載</a>
+                    `;
+                    downloadList.appendChild(item);
+                });
+            }
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         function speakSegment(index) {
@@ -800,10 +936,6 @@
             currentSegmentIndex = target;
             renderCurrentSegment();
             if (isPlaying || window.speechSynthesis.speaking || window.speechSynthesis.paused) speakSegment(target);
-        }
-
-        function downloadAudio() {
-            alert('目前這個 Demo 版是純前端瀏覽器朗讀，沒有真正產出 MP3 檔。\n\n若要匯出音檔，下一階段需要接後端 TTS（例如 Edge TTS / Azure / ElevenLabs），再把各段語音合成為 MP3。');
         }
 
         function downloadText() {

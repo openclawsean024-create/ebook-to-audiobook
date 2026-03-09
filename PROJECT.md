@@ -77,8 +77,8 @@
 ---
 
 ## 建議下一步
-1. 把前端 `index.html` 改成直接呼叫 `/api/convert`
-2. 顯示後端轉檔進度與下載按鈕
+1. ✅ 前端 `index.html` 已直接呼叫 `/api/convert`
+2. ✅ 已顯示後端轉檔結果與下載按鈕
 3. 加入長任務 queue / background worker
 4. 支援章節級輸出
 5. 支援 MP3 合併 / M4B
