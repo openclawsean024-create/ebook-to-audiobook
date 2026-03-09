@@ -401,6 +401,9 @@
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+            ? ''
+            : 'https://ebook-to-audiobook-api-production.up.railway.app';
 
         let selectedVoice = localStorage.getItem('selectedVoice') || 'zh-CN-Xiaoxiao';
         let extractedText = '';
@@ -734,7 +737,7 @@
                 formData.append('volume', toPercentValue(document.getElementById('volume').value, 'volume'));
 
                 setProgress(45, '檔案已送出，後端正在轉換音檔...');
-                const response = await fetch('/api/convert', {
+                const response = await fetch(`${API_BASE}/api/convert`, {
                     method: 'POST',
                     body: formData
                 });
@@ -798,7 +801,7 @@
             const primaryBtn = document.getElementById('primaryDownloadBtn');
             const resultNote = document.getElementById('resultNote');
             const title = data.title || currentBookMeta.title || currentFileName;
-            const primaryUrl = data.download_url;
+            const primaryUrl = absolutizeUrl(data.download_url);
 
             primaryBtn.href = primaryUrl;
             primaryBtn.download = '';
@@ -831,11 +834,17 @@
                             <strong>第 ${segment.index} 段</strong><br>
                             ${Number(segment.chars || 0).toLocaleString()} 字
                         </div>
-                        <a class="download-link" href="${segment.download_url}" download>下載</a>
+                        <a class="download-link" href="${absolutizeUrl(segment.download_url)}" download>下載</a>
                     `;
                     downloadList.appendChild(item);
                 });
             }
+        }
+
+        function absolutizeUrl(path) {
+            if (!path) return '#';
+            if (/^https?:\/\//.test(path)) return path;
+            return `${API_BASE}${path}`;
         }
 
         function escapeHtml(text) {
