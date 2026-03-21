@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>有聲書轉換器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #4f46e5;
+            --primary-2: #7c3aed;
+            --accent: #10b981;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+            --text: #111827;
+            --sub: #6b7280;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --border: #d1d5db;
+        }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(180deg, #eef2ff 0%, #f9fafb 180px, #f3f4f6 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            padding: 26px 18px 32px;
+            text-align: center;
+            color: #fff;
+            box-shadow: 0 10px 30px rgba(79, 70, 229, 0.25);
+        }
+        .header h1 { font-size: 28px; font-weight: 800; letter-spacing: 0.5px; }
+        .header p { font-size: 13px; opacity: 0.95; margin-top: 8px; }
+        .container { max-width: 560px; margin: -14px auto 0; padding: 16px; }
+        .card {
+            background: var(--card);
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+            border: 1px solid rgba(255,255,255,0.65);
+        }
+        .title { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .step {
+            background: var(--primary);
+            color: #fff;
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+        .upload-box {
+            border: 2px dashed #a5b4fc;
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+            background: #eef2ff;
+        }
+        .upload-box p { font-size: 13px; color: var(--sub); margin-top: 8px; }
+        .upload-box strong { display: block; color: var(--text); font-size: 15px; }
+        .file-input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 14px;
+            cursor: pointer;
+        }
+        .file-info, .preview, .stats, .segments-wrap, .result { display: none; }
+        .show { display: block; }
+        .file-info {
+            margin-top: 14px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+        .file-name { font-weight: 700; font-size: 13px; }
+        .file-size, .file-meta { font-size: 12px; color: var(--sub); margin-top: 4px; }
+        .status-box {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--sub);
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 12px;
+            line-height: 1.6;
+        }
+        .status-box strong { color: var(--text); }
+        .preview {
+            margin-top: 12px;
+            max-height: 220px;
+            overflow-y: auto;
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            border: 1px solid #e5e7eb;
+        }
+        .badge { display: inline-block; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; margin: 0 6px 8px 0; }
+        .badge.on { background: rgba(16,185,129,0.14); color: #059669; }
+        .badge.info { background: rgba(79,70,229,0.12); color: var(--primary); }
+        .voice-list { display: flex; flex-direction: column; gap: 10px; }
+        .voice-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: 0.2s ease;
+            background: #fff;
+            cursor: pointer;
+        }
+        .voice-item.selected { border-color: var(--primary); background: rgba(79,70,229,0.06); }
+        .voice-info { display: flex; align-items: center; gap: 10px; }
+        .voice-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .voice-name { font-size: 14px; font-weight: 700; }
+        .voice-lang { font-size: 11px; color: var(--sub); margin-top: 2px; }
+        .preview-btn, .mini-btn, .btn {
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            border-radius: 12px;
+        }
+        .preview-btn {
+            padding: 9px 14px;
+            background: #eef2ff;
+            color: var(--primary);
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .settings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .setting { text-align: center; }
+        .setting label { font-size: 11px; font-weight: 700; display: block; margin-bottom: 6px; }
+        .setting input { width: 100%; }
+        .setting .val { font-size: 11px; color: var(--sub); margin-top: 4px; }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(79, 70, 229, 0.18);
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+        .btn-secondary { background: #e5e7eb; color: var(--text); box-shadow: none; }
+        .btn-green { background: linear-gradient(135deg, #10b981, #059669); }
+        .progress { display: none; margin-top: 14px; }
+        .progress.show { display: block; }
+        .progress-bar { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.25s ease; }
+        .progress-text { text-align: center; font-size: 12px; color: var(--sub); margin-top: 8px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .stat {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px 10px;
+            text-align: center;
+        }
+        .stat .num { display: block; font-size: 18px; font-weight: 800; }
+        .stat .label { display: block; font-size: 11px; color: var(--sub); margin-top: 4px; }
+        .segments-wrap { margin-top: 12px; }
+        .segment-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 8px; color: var(--sub); }
+        .segment-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.75;
+            min-height: 100px;
+            white-space: pre-wrap;
+        }
+        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+        .controls .mini-btn {
+            padding: 11px 8px;
+            background: #eef2ff;
+            color: var(--primary);
+            font-size: 12px;
+        }
+        .controls .mini-btn.warn { background: #fff7ed; color: #c2410c; }
+        .controls .mini-btn.danger { background: #fef2f2; color: var(--danger); }
+        .result-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 14px; padding: 14px; }
+        .result-title { font-size: 15px; font-weight: 800; color: #065f46; }
+        .result-note { font-size: 12px; color: #047857; line-height: 1.7; margin-top: 8px; }
+        .download-list { margin-top: 12px; display: grid; gap: 8px; }
+        .download-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid #a7f3d0;
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 12px;
+        }
+        .download-meta { color: #065f46; line-height: 1.5; }
+        .download-link {
+            flex-shrink: 0;
+            text-decoration: none;
+            color: #fff;
+            background: linear-gradient(135deg, #10b981, #059669);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+        .result-btns { display: flex; gap: 10px; margin-top: 12px; }
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(17,24,39,0.92);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.2s ease;
+            z-index: 20;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        @media (max-width: 480px) {
+            .settings, .stats-grid, .controls { grid-template-columns: 1fr; }
+            .result-btns { flex-direction: column; }
+            .voice-item { align-items: flex-start; flex-direction: column; }
+            .preview-btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>有聲書轉換器</h1>
+        <p>v4.0 Demo - EPUB / PDF / TXT 解析＋分段朗讀控制</p>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="title"><span class="step">✓</span>功能狀態</div>
+            <span class="badge on">PDF</span>
+            <span class="badge on">EPUB</span>
+            <span class="badge on">TXT</span>
+            <span class="badge info">瀏覽器朗讀</span>
+            <span class="badge info">分段播放</span>
+        </div>
+
+        <div class="card">
+            <div class="title"><span class="step">1</span>上傳電子書</div>
+            <div class="upload-box">
+                <strong>支援 PDF / EPUB / TXT</strong>
+                <p>上傳後會先抽取文字、切成段落，再用瀏覽器語音朗讀。</p>
+                <input type="file" id="fileInput" class="file-input" accept=".pdf,.epub,.txt" onclick="this.value=''" onchange="handleFile(this.files[0])">
+            </div>
+
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+                <div class="file-meta" id="fileMeta"></div>
+            </div>
+
+            <div class="status-box" id="statusBox"><strong>待命中：</strong>請先上傳一本電子書。</div>
+            <div class="preview" id="preview"></div>
+        </div>
+
+        <div class="card">
+            <div class="title"><span class="step">2</span>選擇說書人</div>
+            <div class="voice-list">
+                <div class="voice-item selected" data-voice="zh-CN-Xiaoxiao" onclick="selectVoice(this)">
+                    <div class="voice-info">
+                        <div class="voice-icon">👩</div>
+                        <div><div class="voice-name">曉曉</div><div class="voice-lang">中文・溫和敘事</div></div>
+                    </div>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'zh-CN-Xiaoxiao')">試聽</button>
+                </div>
+                <div class="voice-item" data-voice="zh-CN-Yunxi" onclick="selectVoice(this)">
+                    <div class="voice-info">
+                        <div class="voice-icon">👨</div>
+                        <div><div class="voice-name">雲希</div><div class="voice-lang">中文・男聲敘事</div></div>
+                    </div>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'zh-CN-Yunxi')">試聽</button>
+                </div>
+                <div class="voice-item" data-voice="en-US-Jenny" onclick="selectVoice(this)">
+                    <div class="voice-info">
+                        <div class="voice-icon">🎙️</div>
+                        <div><div class="voice-name">Jenny</div><div class="voice-lang">English narration</div></div>
+                    </div>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'en-US-Jenny')">試聽</button>
+                </div>
+                <div class="voice-item" data-voice="ja-JP-Nanami" onclick="selectVoice(this)">
+                    <div class="voice-info">
+                        <div class="voice-icon">🌸</div>
+                        <div><div class="voice-name">七海</div><div class="voice-lang">日本語ナレーション</div></div>
+                    </div>
+                    <button type="button" class="preview-btn" onclick="previewVoice(event, 'ja-JP-Nanami')">試聽</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="title"><span class="step">3</span>調整設定</div>
+            <div class="settings">
+                <div class="setting">
+                    <label>語速</label>
+                    <input type="range" id="speed" min="0.6" max="1.8" step="0.1" value="1" oninput="updateSetting('speed')">
+                    <div class="val" id="speedVal">1.0x</div>
+                </div>
+                <div class="setting">
+                    <label>音調</label>
+                    <input type="range" id="pitch" min="-2" max="2" step="0.1" value="0" oninput="updateSetting('pitch')">
+                    <div class="val" id="pitchVal">0</div>
+                </div>
+                <div class="setting">
+                    <label>音量</label>
+                    <input type="range" id="volume" min="0.2" max="1" step="0.1" value="1" oninput="updateSetting('volume')">
+                    <div class="val" id="volumeVal">100%</div>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" class="btn" id="convertBtn" onclick="startConvert()">開始轉換並產出音檔</button>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-text" id="progressText">準備中...</div>
+        </div>
+
+        <div class="card stats" id="stats">
+            <div class="title"><span class="step">4</span>朗讀摘要</div>
+            <div class="stats-grid">
+                <div class="stat"><span class="num" id="segmentCount">0</span><span class="label">段落數</span></div>
+                <div class="stat"><span class="num" id="currentSegmentDisplay">0 / 0</span><span class="label">目前段落</span></div>
+                <div class="stat"><span class="num" id="readingTime">0 分</span><span class="label">預估時長</span></div>
+            </div>
+
+            <div class="segments-wrap" id="segmentsWrap">
+                <div class="segment-head">
+                    <span id="segmentLabel">段落 1</span>
+                    <span id="segmentLength">0 字</span>
+                </div>
+                <div class="segment-box" id="segmentBox">轉換後的段落會顯示在這裡。</div>
+                <div class="controls">
+                    <button class="mini-btn" type="button" onclick="prevSegment()">上一段</button>
+                    <button class="mini-btn" type="button" onclick="togglePlayPause()" id="playPauseBtn">播放</button>
+                    <button class="mini-btn" type="button" onclick="nextSegment()">下一段</button>
+                    <button class="mini-btn warn" type="button" onclick="resumeSpeech()">繼續</button>
+                    <button class="mini-btn warn" type="button" onclick="pauseSpeech()">暫停</button>
+                    <button class="mini-btn danger" type="button" onclick="stopSpeech()">停止</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="result" id="result">
+            <div class="result-card">
+                <div class="result-title">音檔已產生</div>
+                <div class="result-note" id="resultNote">轉檔完成後，這裡會顯示主下載連結與自動分段結果。</div>
+                <div class="download-list" id="downloadList"></div>
+                <div class="result-btns">
+                    <a id="primaryDownloadBtn" class="btn btn-green" href="#" download style="display:none; text-align:center; text-decoration:none;">下載音檔</a>
+                    <button type="button" class="btn btn-secondary" onclick="downloadText()">下載整理文字</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+            ? ''
+            : 'https://ebook-to-audiobook-api-production.up.railway.app';
+
+        let selectedVoice = localStorage.getItem('selectedVoice') || 'zh-CN-Xiaoxiao';
+        let extractedText = '';
+        let currentFileName = '';
+        let segments = [];
+        let currentSegmentIndex = 0;
+        let currentUtterance = null;
+        let isPaused = false;
+        let isPlaying = false;
+        let selectedFile = null;
+        let latestJob = null;
+        let pollTimer = null;
+        let currentBookMeta = { type: '-', words: 0, title: '-', author: '-' };
+
+        function init() {
+            document.getElementById('speed').value = localStorage.getItem('speed') || 1;
+            document.getElementById('pitch').value = localStorage.getItem('pitch') || 0;
+            document.getElementById('volume').value = localStorage.getItem('volume') || 1;
+            updateSetting('speed');
+            updateSetting('pitch');
+            updateSetting('volume');
+            document.querySelectorAll('.voice-item').forEach(el => {
+                el.classList.toggle('selected', el.dataset.voice === selectedVoice);
+            });
+            if (window.speechSynthesis) {
+                window.speechSynthesis.getVoices();
+            }
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.textContent = text;
+            toast.classList.add('show');
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        function setStatus(text) {
+            document.getElementById('statusBox').innerHTML = text;
+        }
+
+        function updateSetting(type) {
+            const val = document.getElementById(type).value;
+            let display = val + 'x';
+            if (type === 'volume') display = Math.round(val * 100) + '%';
+            if (type === 'pitch') display = (Number(val) > 0 ? '+' : '') + val;
+            document.getElementById(type + 'Val').textContent = display;
+            localStorage.setItem(type, val);
+        }
+
+        function selectVoice(el) {
+            document.querySelectorAll('.voice-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedVoice = el.dataset.voice;
+            localStorage.setItem('selectedVoice', selectedVoice);
+            showToast('已選擇語音：' + el.querySelector('.voice-name').textContent);
+        }
+
+        function previewVoice(event, voiceId) {
+            event.stopPropagation();
+            stopSpeech();
+            const text = '您好，這是語音預覽。若聲線自然，就可以直接開始朗讀電子書。';
+            const utterance = buildUtterance(text, voiceId);
+            utterance.onend = function() { isPlaying = false; };
+            window.speechSynthesis.speak(utterance);
+            showToast('正在試聽：' + voiceId);
+        }
+
+        function normalizeText(text) {
+            return (text || '')
+                .replace(/\r/g, '\n')
+                .replace(/\u0000/g, '')
+                .replace(/[ \t]+/g, ' ')
+                .replace(/\n{3,}/g, '\n\n')
+                .replace(/[ ]+\n/g, '\n')
+                .trim();
+        }
+
+        function splitIntoSegments(text, maxLength = 900) {
+            const clean = normalizeText(text);
+            if (!clean) return [];
+            const paragraphs = clean.split(/\n\s*\n/).map(t => t.trim()).filter(Boolean);
+            const result = [];
+            let buffer = '';
+            for (const para of paragraphs) {
+                if ((buffer + '\n\n' + para).trim().length <= maxLength) {
+                    buffer = buffer ? buffer + '\n\n' + para : para;
+                } else {
+                    if (buffer) result.push(buffer);
+                    if (para.length <= maxLength) {
+                        buffer = para;
+                    } else {
+                        const sentences = para.split(/(?<=[。！？.!?])/).map(s => s.trim()).filter(Boolean);
+                        let sentenceBuffer = '';
+                        for (const sentence of sentences) {
+                            if ((sentenceBuffer + ' ' + sentence).trim().length <= maxLength) {
+                                sentenceBuffer = sentenceBuffer ? sentenceBuffer + ' ' + sentence : sentence;
+                            } else {
+                                if (sentenceBuffer) result.push(sentenceBuffer);
+                                if (sentence.length > maxLength) {
+                                    for (let i = 0; i < sentence.length; i += maxLength) {
+                                        result.push(sentence.slice(i, i + maxLength));
+                                    }
+                                    sentenceBuffer = '';
+                                } else {
+                                    sentenceBuffer = sentence;
+                                }
+                            }
+                        }
+                        buffer = sentenceBuffer;
+                    }
+                }
+            }
+            if (buffer) result.push(buffer);
+            return result.filter(Boolean);
+        }
+
+        function estimateMinutes(text) {
+            const chars = normalizeText(text).length;
+            const speed = parseFloat(document.getElementById('speed').value || '1');
+            const charsPerMinute = 320 * speed;
+            return Math.max(1, Math.ceil(chars / charsPerMinute));
+        }
+
+        function updatePreview(text) {
+            const preview = document.getElementById('preview');
+            preview.textContent = text ? text.slice(0, 1800) + (text.length > 1800 ? '\n\n…（預覽已截斷）' : '') : '未能抽取到文字內容。';
+            preview.classList.add('show');
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function updateFileMeta(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = '檔案大小：' + formatSize(file.size);
+            document.getElementById('fileMeta').textContent = `格式：${currentBookMeta.type}｜標題：${currentBookMeta.title}｜作者：${currentBookMeta.author}`;
+            document.getElementById('fileInfo').classList.add('show');
+        }
+
+        function setProgress(percent, text) {
+            document.getElementById('progress').classList.add('show');
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = text;
+        }
+
+        function hideProgress() {
+            document.getElementById('progress').classList.remove('show');
+        }
+
+        async function handleFile(file) {
+            if (!file) return;
+            stopSpeech();
+            selectedFile = file;
+            latestJob = null;
+            document.getElementById('result').classList.remove('show');
+            document.getElementById('downloadList').innerHTML = '';
+            document.getElementById('primaryDownloadBtn').style.display = 'none';
+            currentFileName = file.name;
+            extractedText = '';
+            segments = [];
+            currentSegmentIndex = 0;
+            currentBookMeta = { type: file.name.split('.').pop().toUpperCase(), words: 0, title: file.name.replace(/\.[^.]+$/, ''), author: '-' };
+            updateFileMeta(file);
+            setStatus('<strong>解析中：</strong>正在讀取檔案內容，請稍候。');
+            setProgress(10, '開始解析檔案...');
+
+            try {
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (ext === 'pdf') {
+                    extractedText = await extractPdfText(file);
+                } else if (ext === 'txt') {
+                    extractedText = await extractTxtText(file);
+                } else if (ext === 'epub') {
+                    extractedText = await extractEpubText(file);
+                } else {
+                    throw new Error('目前僅支援 PDF / EPUB / TXT');
+                }
+
+                extractedText = normalizeText(extractedText);
+                currentBookMeta.words = extractedText.length;
+                updateFileMeta(file);
+                updatePreview(extractedText);
+                hideProgress();
+                setStatus(`<strong>解析完成：</strong>共抽取 ${extractedText.length.toLocaleString()} 字，已可進行分段朗讀。`);
+                showToast('檔案解析完成');
+            } catch (error) {
+                hideProgress();
+                extractedText = '';
+                updatePreview('');
+                setStatus('<strong>解析失敗：</strong>' + error.message);
+                alert('解析失敗：' + error.message);
+            }
+        }
+
+        async function extractTxtText(file) {
+            setProgress(35, '讀取 TXT 內容...');
+            const buffer = await file.arrayBuffer();
+            const decoder = new TextDecoder('utf-8');
+            return decoder.decode(buffer);
+        }
+
+        async function extractPdfText(file) {
+            setProgress(25, 'PDF 載入中...');
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let text = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                setProgress(25 + Math.round((i / pdf.numPages) * 55), `解析 PDF 第 ${i}/${pdf.numPages} 頁...`);
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                const pageText = content.items.map(item => item.str).join(' ');
+                text += pageText + '\n\n';
+            }
+            return text;
+        }
+
+        async function extractEpubText(file) {
+            setProgress(20, '解壓 EPUB 中...');
+            const zip = await JSZip.loadAsync(await file.arrayBuffer());
+            const containerXml = await zip.file('META-INF/container.xml')?.async('string');
+            if (!containerXml) throw new Error('找不到 EPUB 容器資訊');
+
+            const containerDoc = new DOMParser().parseFromString(containerXml, 'application/xml');
+            const rootFile = containerDoc.querySelector('rootfile')?.getAttribute('full-path');
+            if (!rootFile) throw new Error('找不到 OPF 路徑');
+
+            const opfString = await zip.file(rootFile)?.async('string');
+            if (!opfString) throw new Error('讀取 OPF 失敗');
+            const opfDoc = new DOMParser().parseFromString(opfString, 'application/xml');
+            currentBookMeta.title = opfDoc.querySelector('metadata > title, dc\\:title')?.textContent?.trim() || currentBookMeta.title;
+            currentBookMeta.author = opfDoc.querySelector('metadata > creator, dc\\:creator')?.textContent?.trim() || '-';
+            updateFileMeta(file);
+
+            const basePath = rootFile.includes('/') ? rootFile.substring(0, rootFile.lastIndexOf('/') + 1) : '';
+            const manifest = {};
+            opfDoc.querySelectorAll('manifest > item').forEach(item => {
+                manifest[item.getAttribute('id')] = item.getAttribute('href');
+            });
+
+            const spineIds = Array.from(opfDoc.querySelectorAll('spine > itemref')).map(item => item.getAttribute('idref')).filter(Boolean);
+            const collected = [];
+
+            for (let i = 0; i < spineIds.length; i++) {
+                const id = spineIds[i];
+                const href = manifest[id];
+                if (!href) continue;
+                const fullPath = resolvePath(basePath, href);
+                const entry = zip.file(fullPath);
+                if (!entry) continue;
+                setProgress(25 + Math.round((i / Math.max(spineIds.length, 1)) * 55), `解析 EPUB 章節 ${i + 1}/${spineIds.length}...`);
+                const html = await entry.async('string');
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const text = doc.body ? doc.body.textContent : doc.documentElement.textContent;
+                if (text && text.trim()) collected.push(text.trim());
+            }
+
+            if (!collected.length) throw new Error('EPUB 內容抽取失敗');
+            return collected.join('\n\n');
+        }
+
+        function resolvePath(base, relative) {
+            const stack = (base || '').split('/').filter(Boolean);
+            const parts = (relative || '').split('/');
+            stack.pop?.();
+            const baseDir = (base || '').split('/').filter(Boolean);
+            let pathParts = baseDir;
+            for (const part of parts) {
+                if (!part || part === '.') continue;
+                if (part === '..') pathParts.pop();
+                else pathParts.push(part);
+            }
+            return pathParts.join('/');
+        }
+
+        function buildUtterance(text, voiceId = selectedVoice) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = parseFloat(document.getElementById('speed').value);
+            utterance.pitch = 1 + parseFloat(document.getElementById('pitch').value) * 0.35;
+            utterance.volume = parseFloat(document.getElementById('volume').value);
+            const voice = getVoiceByLang(voiceId);
+            if (voice) utterance.voice = voice;
+            return utterance;
+        }
+
+        function getVoiceByLang(voiceId) {
+            const voices = window.speechSynthesis.getVoices() || [];
+            const map = {
+                'zh-CN-Xiaoxiao': ['zh-CN', 'zh-TW', 'Chinese', 'Mandarin'],
+                'zh-CN-Yunxi': ['zh-CN', 'zh-TW', 'Chinese', 'Mandarin'],
+                'en-US-Jenny': ['en-US', 'English'],
+                'ja-JP-Nanami': ['ja-JP', 'Japanese']
+            };
+            const keywords = map[voiceId] || [voiceId];
+            for (const keyword of keywords) {
+                const found = voices.find(v => (v.lang || '').toLowerCase().includes(keyword.toLowerCase()) || (v.name || '').toLowerCase().includes(keyword.toLowerCase()));
+                if (found) return found;
+            }
+            return voices[0] || null;
+        }
+
+        async function startConvert() {
+            if (!selectedFile || !extractedText) {
+                alert('請先上傳並解析電子書');
+                return;
+            }
+
+            stopSpeech(false);
+            const btn = document.getElementById('convertBtn');
+            btn.disabled = true;
+            btn.textContent = '轉換中，請稍候...';
+
+            try {
+                segments = splitIntoSegments(extractedText, 900);
+                currentSegmentIndex = 0;
+                document.getElementById('segmentCount').textContent = segments.length;
+                document.getElementById('readingTime').textContent = estimateMinutes(extractedText) + ' 分';
+                document.getElementById('stats').classList.add('show');
+                document.getElementById('segmentsWrap').classList.add('show');
+                renderCurrentSegment();
+
+                setProgress(18, '建立上傳請求中...');
+                setStatus('<strong>轉檔中：</strong>後端正在產生 MP3，檔案大時會自動分段。');
+
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('voice', mapVoiceForBackend(selectedVoice));
+                formData.append('rate', toPercentValue(document.getElementById('speed').value, 'speed'));
+                formData.append('volume', toPercentValue(document.getElementById('volume').value, 'volume'));
+
+                setProgress(12, '檔案已送出，已建立背景轉檔任務...');
+                const response = await fetch(`${API_BASE}/api/convert`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '轉檔失敗');
+                }
+
+                latestJob = data;
+                await pollJobUntilDone(data.job_id);
+            } catch (error) {
+                setStatus('<strong>轉檔失敗：</strong>' + error.message);
+                showToast('轉檔失敗');
+                alert('轉檔失敗：' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '開始轉換並產出音檔';
+            }
+        }
+
+        function renderCurrentSegment() {
+            const total = segments.length;
+            if (!total) return;
+            const text = segments[currentSegmentIndex] || '';
+            document.getElementById('currentSegmentDisplay').textContent = `${currentSegmentIndex + 1} / ${total}`;
+            document.getElementById('segmentLabel').textContent = `段落 ${currentSegmentIndex + 1}`;
+            document.getElementById('segmentLength').textContent = `${text.length.toLocaleString()} 字`;
+            document.getElementById('segmentBox').textContent = text;
+            document.getElementById('playPauseBtn').textContent = isPlaying && !isPaused ? '暫停' : '播放';
+        }
+
+        async function pollJobUntilDone(jobId) {
+            const started = Date.now();
+            while (true) {
+                const response = await fetch(`${API_BASE}/api/jobs/${jobId}`);
+                const job = await response.json();
+                if (!response.ok) throw new Error(job.detail || '查詢任務失敗');
+
+                latestJob = job;
+                const progress = Number(job.progress || 0);
+                setProgress(progress, job.message || '背景轉檔中...');
+                setStatus(`<strong>背景轉檔中：</strong>${escapeHtml(job.message || '處理中')}（${progress}%）`);
+
+                if (job.segment_count) {
+                    document.getElementById('segmentCount').textContent = job.segment_count;
+                }
+
+                if (job.status === 'completed') {
+                    renderDownloadResult(job);
+                    document.getElementById('result').classList.add('show');
+                    setStatus(`<strong>轉換完成：</strong>${job.segment_count} 段音檔已產生，並提供整本 MP3。`);
+                    showToast('轉檔完成，可直接下載');
+                    setTimeout(hideProgress, 800);
+                    return;
+                }
+
+                if (job.status === 'failed') {
+                    throw new Error(job.error || job.message || '轉檔失敗');
+                }
+
+                if (Date.now() - started > 1000 * 60 * 15) {
+                    throw new Error('背景轉檔逾時，請稍後再試');
+                }
+
+                await new Promise(r => setTimeout(r, 1800));
+            }
+        }
+
+        function mapVoiceForBackend(voiceId) {
+            const map = {
+                'zh-CN-Xiaoxiao': 'zh-CN-XiaoxiaoNeural',
+                'zh-CN-Yunxi': 'zh-CN-YunxiNeural',
+                'en-US-Jenny': 'en-US-JennyNeural',
+                'ja-JP-Nanami': 'ja-JP-NanamiNeural'
+            };
+            return map[voiceId] || 'zh-CN-XiaoxiaoNeural';
+        }
+
+        function toPercentValue(value, type) {
+            const num = Number(value);
+            if (type === 'speed') {
+                return `${num >= 1 ? '+' : '-'}${Math.round(Math.abs(num - 1) * 100)}%`;
+            }
+            if (type === 'volume') {
+                return `${num >= 1 ? '+' : '-'}${Math.round(Math.abs(num - 1) * 100)}%`;
+            }
+            return '+0%';
+        }
+
+        function renderDownloadResult(data) {
+            const downloadList = document.getElementById('downloadList');
+            const primaryBtn = document.getElementById('primaryDownloadBtn');
+            const resultNote = document.getElementById('resultNote');
+            const title = data.title || currentBookMeta.title || currentFileName;
+            const primaryUrl = absolutizeUrl(data.download_url);
+
+            primaryBtn.href = absolutizeUrl(data.merged_download_url || data.download_url);
+            primaryBtn.download = '';
+            primaryBtn.style.display = 'inline-block';
+            primaryBtn.textContent = '下載整本 MP3';
+
+            resultNote.textContent = data.bundle_type === 'segmented_zip'
+                ? `《${title}》內容較大，系統已自動切成 ${data.segment_count} 段，並另外提供整本 MP3 與 ZIP 打包。`
+                : `《${title}》已完成轉檔，可直接下載整本 MP3。`;
+
+            downloadList.innerHTML = '';
+
+            const summary = document.createElement('div');
+            summary.className = 'download-item';
+            summary.innerHTML = `
+                <div class="download-meta">
+                    <strong>${escapeHtml(title)}</strong><br>
+                    作者：${escapeHtml(data.author || '未知作者')}｜段數：${data.segment_count}｜字數：${Number(data.text_chars || 0).toLocaleString()}
+                </div>
+                <a class="download-link" href="${absolutizeUrl(data.merged_download_url || data.download_url)}" download>整本 MP3</a>
+            `;
+            downloadList.appendChild(summary);
+
+            if (data.bundle_type === 'segmented_zip') {
+                const bundle = document.createElement('div');
+                bundle.className = 'download-item';
+                bundle.innerHTML = `
+                    <div class="download-meta">
+                        <strong>分段打包 ZIP</strong><br>
+                        適合下載所有段落與 manifest
+                    </div>
+                    <a class="download-link" href="${primaryUrl}" download>下載 ZIP</a>
+                `;
+                downloadList.appendChild(bundle);
+            }
+
+            if (Array.isArray(data.segments) && data.segments.length > 1) {
+                data.segments.slice(0, 8).forEach(segment => {
+                    const item = document.createElement('div');
+                    item.className = 'download-item';
+                    item.innerHTML = `
+                        <div class="download-meta">
+                            <strong>第 ${segment.index} 段</strong><br>
+                            ${Number(segment.chars || 0).toLocaleString()} 字
+                        </div>
+                        <a class="download-link" href="${absolutizeUrl(segment.download_url)}" download>下載</a>
+                    `;
+                    downloadList.appendChild(item);
+                });
+            }
+        }
+
+        function absolutizeUrl(path) {
+            if (!path) return '#';
+            if (/^https?:\/\//.test(path)) return path;
+            return `${API_BASE}${path}`;
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function speakSegment(index) {
+            if (!segments.length) return;
+            stopSpeech(false);
+            currentSegmentIndex = Math.max(0, Math.min(index, segments.length - 1));
+            const text = segments[currentSegmentIndex];
+            currentUtterance = buildUtterance(text);
+            currentUtterance.onend = function() {
+                isPlaying = false;
+                isPaused = false;
+                if (currentSegmentIndex < segments.length - 1) {
+                    currentSegmentIndex += 1;
+                    renderCurrentSegment();
+                    speakSegment(currentSegmentIndex);
+                } else {
+                    renderCurrentSegment();
+                    showToast('全書段落朗讀完成');
+                }
+            };
+            currentUtterance.onerror = function() {
+                isPlaying = false;
+                isPaused = false;
+                renderCurrentSegment();
+            };
+            isPlaying = true;
+            isPaused = false;
+            renderCurrentSegment();
+            window.speechSynthesis.speak(currentUtterance);
+            showToast(`播放第 ${currentSegmentIndex + 1} 段`);
+        }
+
+        function togglePlayPause() {
+            if (!segments.length) {
+                showToast('請先建立朗讀段落');
+                return;
+            }
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                pauseSpeech();
+            } else if (window.speechSynthesis.paused) {
+                resumeSpeech();
+            } else {
+                speakSegment(currentSegmentIndex);
+            }
+        }
+
+        function pauseSpeech() {
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                window.speechSynthesis.pause();
+                isPaused = true;
+                isPlaying = true;
+                renderCurrentSegment();
+                showToast('已暫停');
+            }
+        }
+
+        function resumeSpeech() {
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+                isPaused = false;
+                isPlaying = true;
+                renderCurrentSegment();
+                showToast('繼續播放');
+            } else if (segments.length && !window.speechSynthesis.speaking) {
+                speakSegment(currentSegmentIndex);
+            }
+        }
+
+        function stopSpeech(resetToast = true) {
+            window.speechSynthesis.cancel();
+            currentUtterance = null;
+            isPaused = false;
+            isPlaying = false;
+            renderCurrentSegment();
+            if (resetToast) showToast('已停止朗讀');
+        }
+
+        function nextSegment() {
+            if (!segments.length) return;
+            const target = Math.min(currentSegmentIndex + 1, segments.length - 1);
+            currentSegmentIndex = target;
+            renderCurrentSegment();
+            if (isPlaying || window.speechSynthesis.speaking || window.speechSynthesis.paused) speakSegment(target);
+        }
+
+        function prevSegment() {
+            if (!segments.length) return;
+            const target = Math.max(currentSegmentIndex - 1, 0);
+            currentSegmentIndex = target;
+            renderCurrentSegment();
+            if (isPlaying || window.speechSynthesis.speaking || window.speechSynthesis.paused) speakSegment(target);
+        }
+
+        function downloadText() {
+            if (!extractedText) {
+                showToast('還沒有可下載的內容');
+                return;
+            }
+            const blob = new Blob([extractedText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (currentFileName.replace(/\.[^.]+$/, '') || 'audiobook') + '-cleaned.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        window.speechSynthesis.onvoiceschanged = function() {
+            window.speechSynthesis.getVoices();
+        };
+
+        init();
+    </script>
+</body>
+</html>
