@@ -1,4 +1,5 @@
-# Vercel FastAPI app for ebook-to-audiobook
+# Vercel ASGI app for ebook-to-audiobook
+# This works with Vercel's @vercel/python builder
 import base64
 import io
 import json
@@ -8,12 +9,9 @@ import uuid
 import zipfile
 from pathlib import Path
 
-try:
-    from vercel_fastapi import VercelFastAPI
-    app = VercelFastAPI()
-except ImportError:
-    from fastapi import FastAPI
-    app = FastAPI()
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel
 
 # Try importing optional dependencies
 EDGE_TTS_AVAILABLE = False
@@ -47,24 +45,23 @@ try:
 except ImportError:
     ITEM_DOCUMENT = None
 
+app = FastAPI(title="ebook-to-audiobook")
 
 DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural"
 MAX_SEGMENT_CHARS = 2500
 ALLOWED_EXTENSIONS = {".pdf", ".epub", ".txt"}
 
 
-class ConvertRequest:
-    def __init__(self, file_content: str, file_name: str, voice: str = DEFAULT_VOICE, rate: str = "+0%", volume: str = "+0%"):
-        self.file_content = file_content
-        self.file_name = file_name
-        self.voice = voice
-        self.rate = rate
-        self.volume = volume
+class ConvertRequest(BaseModel):
+    file_content: str
+    file_name: str
+    voice: str = DEFAULT_VOICE
+    rate: str = "+0%"
+    volume: str = "+0%"
 
 
 @app.get("/health")
 def health():
-    from fastapi.responses import JSONResponse
     return JSONResponse({
         "ok": True,
         "services": {
@@ -78,7 +75,6 @@ def health():
 
 @app.get("/")
 def root():
-    from fastapi.responses import HTMLResponse
     return HTMLResponse("""
     <html><head><title>ebook-to-audiobook</title></head>
     <body>
@@ -98,9 +94,6 @@ def root():
 
 @app.post("/api/convert")
 async def convert(request: ConvertRequest):
-    from fastapi import HTTPException
-    from fastapi.responses import JSONResponse
-    
     try:
         file_bytes = base64.b64decode(request.file_content)
     except Exception:
