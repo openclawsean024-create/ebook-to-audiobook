@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 """
 Vercel Serverless Compatible API for ebook-to-audiobook
-Uses synchronous processing with streaming responses
 """
 
 import base64
 import io
 import json
-import os
 import re
-import tempfile
 import uuid
 import zipfile
 from pathlib import Path
@@ -45,7 +42,7 @@ DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural"
 MAX_SEGMENT_CHARS = 2500
 ALLOWED_EXTENSIONS = {".pdf", ".epub", ".txt"}
 
-# In-memory job storage (ephemeral in serverless)
+# In-memory job storage
 JOBS = {}
 
 VOICE_ALIASES = {
@@ -61,7 +58,6 @@ VOICE_ALIASES = {
 
 
 def normalize_signed_percent(value: str) -> str:
-    """Normalize percentage values like +0%"""
     raw = (value or "0").strip().replace("%", "")
     if not raw:
         raw = "0"
@@ -78,68 +74,7 @@ def normalize_signed_percent(value: str) -> str:
     return f"{sign}{int(float(number))}%"
 
 
-def extract_text_from_txt(content: bytes) -> str:
-    """Extract text from TXT file"""
-    for encoding in ("utf-8", "utf-8-sig", "cp950", "big5", "gb18030"):
-        try:
-            return content.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    return content.decode("utf-8", errors="ignore")
-
-
-def extract_text_from_pdf(content: bytes) -> str:
-    """Extract text from PDF"""
-    if not PDF_AVAILABLE:
-        raise RuntimeError("pypdf not available")
-    
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-        f.write(content)
-        temp_path = f.name
-    
-    try:
-        reader = PdfReader(temp_path)
-        return "\n\n".join((page.extract_text() or "") for page in reader.pages)
-    finally:
-        Path(temp_path).unlink(missing_ok=True)
-
-
-def extract_text_from_epub(content: bytes) -> tuple[str, str, str]:
-    """Extract text from EPUB - returns (title, author, text)"""
-    if not EPUB_AVAILABLE:
-        raise RuntimeError("ebooklib not available")
-    
-    with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as f:
-        f.write(content)
-        temp_path = f.name
-    
-    try:
-        book = epub.read_epub(temp_path)
-        
-        # Get metadata
-        title_meta = book.get_metadata("DC", "title")
-        author_meta = book.get_metadata("DC", "creator")
-        
-        title = str(title_meta[0][0]) if title_meta else "Unknown"
-        author = str(author_meta[0][0]) if author_meta else "Unknown Author"
-        
-        # Extract text from documents
-        from ebooklib import ITEM_DOCUMENT
-        parts = []
-        
-        for item in book.get_items_of_type(ITEM_DOCUMENT):
-            soup = BeautifulSoup(item.get_content(), "html.parser")
-            text = soup.get_text(" ", strip=True)
-            if text:
-                parts.append(text)
-        
-        return title, author, "\n\n".join(parts)
-    finally:
-        Path(temp_path).unlink(missing_ok=True)
-
-
 def normalize_text(text: str) -> str:
-    """Clean and normalize text"""
     text = text.replace("\r", "\n").replace("\x00", "")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
@@ -148,7 +83,6 @@ def normalize_text(text: str) -> str:
 
 
 def split_into_segments(text: str, max_chars: int = MAX_SEGMENT_CHARS) -> list[str]:
-    """Split text into TTS-friendly segments"""
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     if not paragraphs:
         return []
@@ -170,7 +104,6 @@ def split_into_segments(text: str, max_chars: int = MAX_SEGMENT_CHARS) -> list[s
             buffer = para
             continue
         
-        # Split long paragraphs by sentences
         sentences = [s.strip() for s in re.split(r"(?<=[。！？.!?])", para) if s.strip()]
         sentence_buffer = ""
         
@@ -184,7 +117,6 @@ def split_into_segments(text: str, max_chars: int = MAX_SEGMENT_CHARS) -> list[s
                 if len(sentence) <= max_chars:
                     sentence_buffer = sentence
                 else:
-                    # Split very long sentences
                     for i in range(0, len(sentence), max_chars):
                         segments.append(sentence[i:i + max_chars])
                     sentence_buffer = ""
@@ -199,7 +131,6 @@ def split_into_segments(text: str, max_chars: int = MAX_SEGMENT_CHARS) -> list[s
 
 
 async def synthesize_segment(text: str, voice: str, rate: str, volume: str) -> bytes:
-    """Synthesize a single segment to audio"""
     if EDGE_TTS_AVAILABLE:
         try:
             communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate, volume=volume)
@@ -211,7 +142,6 @@ async def synthesize_segment(text: str, voice: str, rate: str, volume: str) -> b
         except Exception:
             pass
     
-    # Fallback to gTTS
     if GTTS_AVAILABLE:
         voice_lower = voice.lower()
         if "ja-" in voice_lower:
@@ -229,102 +159,236 @@ async def synthesize_segment(text: str, voice: str, rate: str, volume: str) -> b
     raise RuntimeError("No TTS engine available")
 
 
-async def synthesize_book(job_id: str, title: str, author: str, text: str, voice: str, rate: str, volume: str) -> dict:
-    """Main synthesis pipeline"""
-    cleaned_text = normalize_text(text)
+def json_response(data, status=200):
+    return {
+        "statusCode": status,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        },
+        "body": json.dumps(data, ensure_ascii=False)
+    }
+
+
+def html_response(html, status=200):
+    return {
+        "statusCode": status,
+        "headers": {
+            "Content-Type": "text/html",
+            "Access-Control-Allow-Origin": "*",
+        },
+        "body": html
+    }
+
+
+HTML_PAGE = """<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ebook-to-audiobook</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #4f46e5; --primary-dark: #4338ca; --bg: #f9fafb; --card: #fff; --text: #111827; --sub: #6b7280; }
+        body { font-family: 'Noto Sans TC', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 540px; margin: 0 auto; }
+        .header { text-align: center; padding: 30px 20px; background: linear-gradient(135deg, var(--primary), #7c3aed); color: white; border-radius: 16px; margin-bottom: 24px; }
+        .header h1 { font-size: 26px; font-weight: 800; }
+        .header p { margin-top: 8px; opacity: 0.9; }
+        .card { background: var(--card); border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+        .step-num { background: var(--primary); color: white; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 8px; }
+        .upload-box { border: 2px dashed #c7d2fe; border-radius: 12px; padding: 30px; text-align: center; background: #eef2ff; cursor: pointer; transition: all 0.2s; }
+        .upload-box:hover { border-color: var(--primary); }
+        .upload-box p { color: var(--sub); margin-top: 10px; font-size: 14px; }
+        input[type="file"] { display: none; }
+        select, button { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #d1d5db; font-size: 15px; margin-top: 12px; font-family: inherit; }
+        button { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border: none; font-weight: 700; cursor: pointer; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .file-info { margin-top: 12px; padding: 12px; background: #f3f4f6; border-radius: 8px; font-size: 14px; }
+        .status { margin-top: 16px; padding: 16px; border-radius: 10px; display: none; }
+        .status.show { display: block; }
+        .status.processing { background: #fef3c7; }
+        .status.success { background: #d1fae5; }
+        .status.error { background: #fee2e2; }
+        .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); transition: width 0.3s; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+        .stat { background: #f3f4f6; padding: 10px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 12px; color: var(--sub); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 ebook-to-audiobook</h1>
+            <p>將 EPUB、PDF、TXT 轉換為有聲書</p>
+        </div>
+        <div class="card">
+            <div class="card-title"><span class="step-num">1</span>選擇檔案</div>
+            <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+                <p>點擊上傳電子書</p>
+                <p style="font-size:12px;color:var(--sub)">支援 EPUB、PDF、TXT</p>
+            </div>
+            <input type="file" id="fileInput" accept=".txt,.pdf,.epub">
+            <div id="fileInfo" class="file-info" style="display:none"></div>
+        </div>
+        <div class="card">
+            <div class="card-title"><span class="step-num">2</span>選擇語音</div>
+            <select id="voiceSelect">
+                <option value="zh-CN-XiaoxiaoNeural">中文 - 曉曉</option>
+                <option value="zh-CN-YunxiNeural">中文 - 雲希</option>
+                <option value="en-US-JennyNeural">English - Jenny</option>
+                <option value="ja-JP-NanamiNeural">日本語 - ななみ</option>
+            </select>
+            <button id="convertBtn" onclick="convertBook()" disabled>開始轉換</button>
+        </div>
+        <div id="status" class="status"></div>
+    </div>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const convertBtn = document.getElementById('convertBtn');
+        const status = document.getElementById('status');
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const size = file.size > 1024 * 1024 ? (file.size/1024/1024).toFixed(2)+' MB' : (file.size/1024).toFixed(1)+' KB';
+                fileInfo.innerHTML = '<strong>'+file.name+'</strong><br>'+size;
+                fileInfo.style.display = 'block';
+                convertBtn.disabled = false;
+            }
+        });
+        
+        async function convertBook() {
+            const file = fileInput.files[0];
+            const voice = document.getElementById('voiceSelect').value;
+            if (!file) return;
+            convertBtn.disabled = true;
+            status.className = 'status show processing';
+            status.innerHTML = '<p>📤 上傳中...</p><div class="progress-bar"><div class="progress-fill" style="width:10%"></div></div>';
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+                status.innerHTML = '<p>🔄 處理中...</p><div class="progress-bar"><div class="progress-fill" style="width:30%"></div></div>';
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_content: base64, file_name: file.name, voice: voice })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                status.className = 'status show success';
+                status.innerHTML = '<p style="font-weight:700;font-size:16px">✅ 轉換完成！</p>' +
+                    '<div class="stats"><div class="stat"><div class="stat-value">'+data.segment_count+'</div><div class="stat-label">段落</div></div>' +
+                    '<div class="stat"><div class="stat-value">'+data.text_chars+'</div><div class="stat-label">字元</div></div>' +
+                    '<div class="stat"><div class="stat-value">'+Math.round(data.audio_size/1024)+'</div><div class="stat-label">KB</div></div></div>' +
+                    '<div style="margin-top:16px"><p style="margin:8px 0;font-weight:500">👂 預覽：</p><audio controls src="data:audio/mpeg;base64,'+data.audio_base64+'"></audio></div>';
+            } catch (err) {
+                status.className = 'status show error';
+                status.innerHTML = '<p>❌ 錯誤: '+err.message+'</p>';
+                convertBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>"""
+
+
+async def process_conversion(job_id: str, content: bytes, file_name: str, voice: str, rate: str, volume: str):
+    """Process the book conversion"""
+    import asyncio
     
-    if not cleaned_text:
-        raise ValueError("No text content found")
+    ext = Path(file_name).suffix.lower()
+    title = Path(file_name).stem
+    author = "Unknown Author"
     
-    # Update job status
-    JOBS[job_id].update({
-        "status": "processing",
-        "stage": "parsing",
-        "progress": 10,
-        "message": "Parsing book content..."
-    })
-    
-    # Split into segments
-    segments = split_into_segments(cleaned_text)
-    
-    JOBS[job_id].update({
-        "status": "processing",
-        "stage": "synthesizing",
-        "progress": 30,
-        "message": f"Converting {len(segments)} segments to audio..."
-    })
-    
-    # Synthesize each segment
-    audio_data = []
-    for i, segment in enumerate(segments):
+    if ext == ".txt":
+        for enc in ("utf-8", "utf-8-sig", "cp950", "big5", "gb18030"):
+            try:
+                text = content.decode(enc)
+                break
+            except:
+                text = content.decode("utf-8", errors="ignore")
+    elif ext == ".pdf":
+        if not PDF_AVAILABLE:
+            raise RuntimeError("PDF not supported")
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            f.write(content)
+            temp = f.name
         try:
-            audio = await synthesize_segment(segment, voice, rate, volume)
+            reader = PdfReader(temp)
+            text = "\n\n".join((p.extract_text() or "") for p in reader.pages)
+        finally:
+            Path(temp).unlink(missing_ok=True)
+    elif ext == ".epub":
+        if not EPUB_AVAILABLE:
+            raise RuntimeError("EPUB not supported")
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as f:
+            f.write(content)
+            temp = f.name
+        try:
+            book = epub.read_epub(temp)
+            title_meta = book.get_metadata("DC", "title")
+            author_meta = book.get_metadata("DC", "creator")
+            title = str(title_meta[0][0]) if title_meta else title
+            author = str(author_meta[0][0]) if author_meta else author
+            
+            parts = []
+            for item in book.get_items_of_type(ITEM_DOCUMENT):
+                soup = BeautifulSoup(item.get_content(), "html.parser")
+                t = soup.get_text(" ", strip=True)
+                if t:
+                    parts.append(t)
+            text = "\n\n".join(parts)
+        finally:
+            Path(temp).unlink(missing_ok=True)
+    else:
+        raise ValueError(f"Unsupported: {ext}")
+    
+    text = normalize_text(text)
+    if not text:
+        raise ValueError("No text found")
+    
+    segments = split_into_segments(text)
+    
+    audio_data = []
+    for i, seg in enumerate(segments):
+        try:
+            audio = await synthesize_segment(seg, voice, rate, volume)
             audio_data.append(audio)
         except Exception as e:
-            # Skip failed segments but continue
-            print(f"Segment {i+1} failed: {e}")
-        
-        progress = 30 + int((i + 1) / len(segments) * 50)
-        JOBS[job_id].update({
-            "progress": min(progress, 80),
-            "message": f"Converting segment {i+1}/{len(segments)}..."
-        })
+            print(f"Segment {i+1} error: {e}")
     
     if not audio_data:
-        raise ValueError("No audio was generated")
-    
-    # Merge all audio segments
-    JOBS[job_id].update({
-        "status": "processing",
-        "stage": "merging",
-        "progress": 90,
-        "message": "Merging audio segments..."
-    })
+        raise ValueError("No audio generated")
     
     merged_audio = b"".join(audio_data)
     
-    # Build manifest
-    manifest = {
-        "job_id": job_id,
+    return {
         "title": title,
         "author": author,
-        "voice": voice,
-        "rate": rate,
-        "volume": volume,
-        "segment_count": len(segments),
-        "text_chars": len(cleaned_text),
-        "merged_audio_size": len(merged_audio),
-    }
-    
-    JOBS[job_id].update({
-        "status": "completed",
-        "stage": "completed",
-        "progress": 100,
-        "message": "Conversion completed!",
-        "segment_count": len(segments),
-        "text_chars": len(cleaned_text),
-        "audio_size": len(merged_audio),
-        "manifest": manifest,
-    })
-    
-    return {
         "audio": merged_audio,
-        "manifest": manifest,
+        "segment_count": len(segments),
+        "text_chars": len(text),
+        "audio_size": len(merged_audio)
     }
 
 
-def create_zip_package(job_id: str, audio_data: bytes, manifest: dict) -> bytes:
-    """Create ZIP package with audio and manifest"""
-    buffer = io.BytesIO()
-    
-    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("audiobook.mp3", audio_data)
-        zf.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
-    
-    return buffer.getvalue()
+# Import for epub
+try:
+    from ebooklib import ITEM_DOCUMENT
+except:
+    ITEM_DOCUMENT = None
 
 
-# Vercel handler
 def handler(event, context):
     """Vercel serverless function handler"""
     import asyncio
@@ -333,299 +397,116 @@ def handler(event, context):
     method = event.get("httpMethod", "GET")
     headers = event.get("headers", {})
     
-    # Set up response headers
-    response_headers = {
-        "Content-Type": "application/json",
+    # CORS headers
+    cors = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
     }
     
-    # Handle CORS preflight
     if method == "OPTIONS":
-        return {
-            "statusCode": 200,
-            "headers": response_headers,
-            "body": ""
-        }
+        return {"statusCode": 200, "headers": cors, "body": ""}
     
     # Health check
-    if path == "/health" or path == "/api/health":
-        return {
-            "statusCode": 200,
-            "headers": response_headers,
-            "body": json.dumps({
-                "ok": True,
-                "services": {
-                    "edge_tts": EDGE_TTS_AVAILABLE,
-                    "gtts": GTTS_AVAILABLE,
-                    "pdf": PDF_AVAILABLE,
-                    "epub": EPUB_AVAILABLE,
-                },
-                "jobs": len(JOBS)
-            })
-        }
+    if path == "/health":
+        return json_response({
+            "ok": True,
+            "services": {
+                "edge_tts": EDGE_TTS_AVAILABLE,
+                "gtts": GTTS_AVAILABLE,
+                "pdf": PDF_AVAILABLE,
+                "epub": EPUB_AVAILABLE,
+            },
+            "jobs": len(JOBS)
+        })
     
-    # Convert endpoint
+    # Convert API
     if path == "/api/convert" and method == "POST":
         try:
-            # Parse multipart form data
-            content_type = headers.get("Content-Type", "")
+            body = event.get("body", "")
+            if event.get("isBase64Encoded"):
+                body = base64.b64decode(body)
             
-            if "multipart/form-data" in content_type:
-                # Handle file upload
-                body = event.get("body", "")
-                if event.get("isBase64Encoded", False):
-                    body = base64.b64decode(body)
+            data = json.loads(body)
+            file_content = data.get("file_content", "")
+            file_name = data.get("file_name", "book.txt")
+            voice = data.get("voice", DEFAULT_VOICE)
+            rate = data.get("rate", "+0%")
+            volume = data.get("volume", "+0%")
+            
+            if not file_content:
+                return json_response({"error": "file_content required"}, 400)
+            
+            try:
+                file_bytes = base64.b64decode(file_content)
+            except Exception:
+                return json_response({"error": "Invalid base64"}, 400)
+            
+            ext = Path(file_name).suffix.lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                return json_response({"error": f"Unsupported: {ext}"}, 400)
+            
+            job_id = uuid.uuid4().hex[:12]
+            resolved_voice = VOICE_ALIASES.get(voice, voice)
+            
+            JOBS[job_id] = {
+                "job_id": job_id,
+                "status": "processing",
+                "title": Path(file_name).stem,
+            }
+            
+            try:
+                result = asyncio.run(process_conversion(job_id, file_bytes, file_name, resolved_voice, rate, volume))
                 
-                # Simple form parsing (for Vercel)
-                # In production, use a proper multipart parser
-                return {
-                    "statusCode": 400,
-                    "headers": response_headers,
-                    "body": json.dumps({
-                        "error": "Please use JSON API for now. POST to /api/convert with JSON body containing base64 encoded file."
-                    })
-                }
-            else:
-                # JSON body
-                body = event.get("body", "")
-                if event.get("isBase64Encoded", False):
-                    body = base64.b64decode(body)
-                
-                data = json.loads(body)
-                
-                # Extract parameters
-                file_content = data.get("file_content", "")
-                file_name = data.get("file_name", "book.txt")
-                voice = data.get("voice", DEFAULT_VOICE)
-                rate = data.get("rate", "+0%")
-                volume = data.get("volume", "+0%")
-                
-                if not file_content:
-                    return {
-                        "statusCode": 400,
-                        "headers": response_headers,
-                        "body": json.dumps({"error": "file_content is required"})
-                    }
-                
-                # Decode file
-                try:
-                    file_bytes = base64.b64decode(file_content)
-                except Exception:
-                    return {
-                        "statusCode": 400,
-                        "headers": response_headers,
-                        "body": json.dumps({"error": "Invalid base64 file_content"})
-                    }
-                
-                # Determine file type
-                ext = Path(file_name).suffix.lower()
-                if ext not in ALLOWED_EXTENSIONS:
-                    return {
-                        "statusCode": 400,
-                        "headers": response_headers,
-                        "body": json.dumps({"error": f"Unsupported file type: {ext}"})
-                    }
-                
-                # Create job
-                job_id = uuid.uuid4().hex[:12]
-                resolved_voice = VOICE_ALIASES.get(voice, voice or DEFAULT_VOICE)
-                normalized_rate = normalize_signed_percent(rate)
-                normalized_volume = normalize_signed_percent(volume)
-                
-                JOBS[job_id] = {
+                zip_buffer = io.BytesIO()
+                manifest = {
                     "job_id": job_id,
-                    "status": "queued",
-                    "stage": "queued",
-                    "progress": 0,
-                    "message": "Job created, processing...",
-                    "title": Path(file_name).stem,
-                    "author": "Unknown Author",
-                    "file_type": ext.lstrip(".").upper(),
-                    "voice": resolved_voice,
-                    "rate": normalized_rate,
-                    "volume": normalized_volume,
+                    "title": result["title"],
+                    "author": result["author"],
+                    "segment_count": result["segment_count"],
+                    "text_chars": result["text_chars"],
                 }
+                with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                    zf.writestr("audiobook.mp3", result["audio"])
+                    zf.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False))
                 
-                # Process based on file type
-                try:
-                    if ext == ".txt":
-                        title = Path(file_name).stem
-                        author = "Unknown Author"
-                        text = extract_text_from_txt(file_bytes)
-                    elif ext == ".pdf":
-                        title = Path(file_name).stem
-                        author = "Unknown Author"
-                        text = extract_text_from_pdf(file_bytes)
-                    elif ext == ".epub":
-                        title, author, text = extract_text_from_epub(file_bytes)
-                    else:
-                        raise ValueError(f"Unsupported: {ext}")
-                    
-                    # Run synthesis
-                    result = asyncio.run(synthesize_book(
-                        job_id=job_id,
-                        title=title,
-                        author=author,
-                        text=text,
-                        voice=resolved_voice,
-                        rate=normalized_rate,
-                        volume=normalized_volume,
-                    ))
-                    
-                    # Create ZIP package
-                    zip_data = create_zip_package(job_id, result["audio"], result["manifest"])
-                    
-                    # Return job info (in production, store audio to cloud storage)
-                    return {
-                        "statusCode": 200,
-                        "headers": {**response_headers, "Content-Type": "application/json"},
-                        "body": json.dumps({
-                            "job_id": job_id,
-                            "status": "completed",
-                            "stage": "completed",
-                            "progress": 100,
-                            "title": title,
-                            "author": author,
-                            "segment_count": result["manifest"]["segment_count"],
-                            "text_chars": result["manifest"]["text_chars"],
-                            "audio_size": result["manifest"]["merged_audio_size"],
-                            # For demo, return base64 audio (production should use cloud storage)
-                            "audio_base64": base64.b64encode(result["audio"]).decode(),
-                            "zip_base64": base64.b64encode(zip_data).decode(),
-                        })
-                    }
-                    
-                except Exception as e:
-                    JOBS[job_id].update({
-                        "status": "failed",
-                        "error": str(e)
-                    })
-                    return {
-                        "statusCode": 500,
-                        "headers": response_headers,
-                        "body": json.dumps({"error": str(e)})
-                    }
+                JOBS[job_id].update({
+                    "status": "completed",
+                    "segment_count": result["segment_count"],
+                    "text_chars": result["text_chars"],
+                    "audio_size": result["audio_size"],
+                })
+                
+                return json_response({
+                    "job_id": job_id,
+                    "status": "completed",
+                    "title": result["title"],
+                    "author": result["author"],
+                    "segment_count": result["segment_count"],
+                    "text_chars": result["text_chars"],
+                    "audio_size": result["audio_size"],
+                    "audio_base64": base64.b64encode(result["audio"]).decode(),
+                    "zip_base64": base64.b64encode(zip_buffer.getvalue()).decode(),
+                })
+                
+            except Exception as e:
+                JOBS[job_id].update({"status": "failed", "error": str(e)})
+                return json_response({"error": str(e)}, 500)
+        
+        except json.JSONDecodeError:
+            return json_response({"error": "Invalid JSON"}, 400)
+        except Exception as e:
+            return json_response({"error": str(e)}, 500)
     
-    # Job status endpoint
+    # Job status
     if path.startswith("/api/jobs/") and method == "GET":
         job_id = path.split("/")[-1]
-        
-        if job_id not in JOBS:
-            return {
-                "statusCode": 404,
-                "headers": response_headers,
-                "body": json.dumps({"error": "Job not found"})
-            }
-        
-        return {
-            "statusCode": 200,
-            "headers": response_headers,
-            "body": json.dumps(JOBS[job_id])
-        }
+        if job_id in JOBS:
+            return json_response(JOBS[job_id])
+        return json_response({"error": "Not found"}, 404)
     
-    # Root endpoint
+    # Root - serve HTML
     if path == "/" or path == "":
-        return {
-            "statusCode": 200,
-            "headers": {**response_headers, "Content-Type": "text/html"},
-            "body": """<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ebook-to-audiobook</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; line-height: 1.6; }
-        h1 { color: #4f46e5; }
-        .card { background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .btn { background: #4f46e5; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-        .btn:hover { background: #4338ca; }
-        input, select { padding: 10px; margin: 5px 0; border: 1px solid #d1d5db; border-radius: 4px; width: 100%; }
-        .result { background: #d1fae5; padding: 15px; border-radius: 6px; margin-top: 20px; display: none; }
-    </style>
-</head>
-<body>
-    <h1>📚 ebook-to-audiobook</h1>
-    <p>將電子書轉換為有聲書</p>
+        return html_response(HTML_PAGE)
     
-    <div class="card">
-        <h3>上傳電子書</h3>
-        <input type="file" id="fileInput" accept=".txt,.pdf,.epub">
-        <select id="voiceSelect">
-            <option value="zh-CN-XiaoxiaoNeural">中文 - 曉曉</option>
-            <option value="zh-CN-YunxiNeural">中文 - 雲希</option>
-            <option value="en-US-JennyNeural">English - Jenny</option>
-            <option value="ja-JP-NanamiNeural">日本語 - ななみ</option>
-        </select>
-        <button class="btn" onclick="convertBook()">開始轉換</button>
-    </div>
-    
-    <div id="result" class="result"></div>
-    
-    <script>
-    async function convertBook() {
-        const fileInput = document.getElementById('fileInput');
-        const voiceSelect = document.getElementById('voiceSelect');
-        const resultDiv = document.getElementById('result');
-        
-        if (!fileInput.files[0]) {
-            alert('請選擇檔案');
-            return;
-        }
-        
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        
-        reader.onload = async function(e) {
-            const base64 = e.target.result.split(',')[1];
-            
-            resultDiv.innerHTML = '轉換中...';
-            resultDiv.style.display = 'block';
-            
-            try {
-                const response = await fetch('/api/convert', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        file_content: base64,
-                        file_name: file.name,
-                        voice: voiceSelect.value
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.audio_base64) {
-                    const audio = new Audio('data:audio/mpeg;base64,' + data.audio_base64);
-                    audio.controls = true;
-                    resultDiv.innerHTML = '<h4>✅ 轉換完成！</h4>' +
-                        '<p>標題: ' + data.title + '</p>' +
-                        '<p>作者: ' + data.author + '</p>' +
-                        '<p>段落數: ' + data.segment_count + '</p>' +
-                        '<p>字元數: ' + data.text_chars + '</p>' +
-                        '<p>音訊大小: ' + Math.round(data.audio_size/1024) + ' KB</p>' +
-                        '<h4>預覽:</h4>';
-                    resultDiv.appendChild(audio);
-                } else {
-                    resultDiv.innerHTML = '<p>錯誤: ' + (data.error || 'Unknown error') + '</p>';
-                }
-            } catch (err) {
-                resultDiv.innerHTML = '<p>錯誤: ' + err.message + '</p>';
-            }
-        };
-        
-        reader.readAsDataURL(file);
-    }
-    </script>
-</body>
-</html>"""
-        }
-    
-    # Default 404
-    return {
-        "statusCode": 404,
-        "headers": response_headers,
-        "body": json.dumps({"error": "Not found"})
-    }
+    return json_response({"error": "Not found"}, 404)
