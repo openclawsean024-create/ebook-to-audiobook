@@ -1,4 +1,4 @@
-# Vercel-compatible FastAPI app for ebook-to-audiobook
+# Vercel FastAPI app for ebook-to-audiobook
 import base64
 import io
 import json
@@ -8,9 +8,12 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel
+try:
+    from vercel_fastapi import VercelFastAPI
+    app = VercelFastAPI()
+except ImportError:
+    from fastapi import FastAPI
+    app = FastAPI()
 
 # Try importing optional dependencies
 EDGE_TTS_AVAILABLE = False
@@ -44,23 +47,24 @@ try:
 except ImportError:
     ITEM_DOCUMENT = None
 
-app = FastAPI(title="ebook-to-audiobook")
 
 DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural"
 MAX_SEGMENT_CHARS = 2500
 ALLOWED_EXTENSIONS = {".pdf", ".epub", ".txt"}
 
 
-class ConvertRequest(BaseModel):
-    file_content: str
-    file_name: str
-    voice: str = DEFAULT_VOICE
-    rate: str = "+0%"
-    volume: str = "+0%"
+class ConvertRequest:
+    def __init__(self, file_content: str, file_name: str, voice: str = DEFAULT_VOICE, rate: str = "+0%", volume: str = "+0%"):
+        self.file_content = file_content
+        self.file_name = file_name
+        self.voice = voice
+        self.rate = rate
+        self.volume = volume
 
 
 @app.get("/health")
 def health():
+    from fastapi.responses import JSONResponse
     return JSONResponse({
         "ok": True,
         "services": {
@@ -74,6 +78,7 @@ def health():
 
 @app.get("/")
 def root():
+    from fastapi.responses import HTMLResponse
     return HTMLResponse("""
     <html><head><title>ebook-to-audiobook</title></head>
     <body>
@@ -93,6 +98,9 @@ def root():
 
 @app.post("/api/convert")
 async def convert(request: ConvertRequest):
+    from fastapi import HTTPException
+    from fastapi.responses import JSONResponse
+    
     try:
         file_bytes = base64.b64decode(request.file_content)
     except Exception:
@@ -239,9 +247,3 @@ async def convert(request: ConvertRequest):
         "audio_base64": base64.b64encode(merged).decode(),
         "zip_base64": base64.b64encode(zip_buf.getvalue()).decode(),
     })
-
-
-# Vercel ASGI handler
-def handler(event, context):
-    """ASGI handler for Vercel"""
-    return app(event, context)
