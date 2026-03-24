@@ -1,30 +1,64 @@
-# ebook-to-audiobook
+# VoxChapter — EPUB to Audiobook
 
-把電子書（EPUB/PDF/TXT）轉換成有聲書的服務，使用 Edge TTS 文字轉語音。
+Convert ebooks (EPUB, TXT) to AI-narrated audiobooks with chapter segmentation.
 
-## 功能
+## Features
 
-- 📖 支援格式：EPUB、PDF、TXT
-- 🔊 語音：Microsoft Edge TTS（中文、英文、日文）
-- 📦 輸出：章節MP3 + 完整有聲書 + ZIP打包
-- 🚀 部署：Vercel Serverless
+- EPUB & TXT parsing
+- AI voices via ElevenLabs
+- Chapter-segmented MP3 output
+- User authentication
+- Usage dashboard
+- Free / Pro / Business pricing
 
-## 本地開發
+## Setup
+
+### 1. Clone and install
 
 ```bash
-pip install -r requirements.txt
-python app.py
+npm install
 ```
 
-## Vercel 部署
+### 2. Supabase
+
+Create a Supabase project and run the schema:
+
+```bash
+# supabase/schema.sql — run in Supabase SQL Editor
+```
+
+### 3. Environment variables
+
+```bash
+cp .env.local.example .env.local
+# Fill in your Supabase URL and anon key
+```
+
+### 4. Run locally
+
+```bash
+npm run dev
+```
+
+### 5. Deploy to Vercel
 
 ```bash
 vercel deploy
 ```
 
-## API
+## Architecture
 
-- `POST /api/convert` - 建立轉換任務
-- `GET /api/jobs/{job_id}` - 查詢任務狀態
-- `GET /downloads/{job_id}/{filename}` - 下載輸出檔案
-- `GET /health` - 健康檢查
+- **Frontend**: Next.js 14 (App Router)
+- **Backend**: Next.js API routes
+- **Auth**: Supabase Auth
+- **Database**: Supabase (profiles, conversions)
+- **Storage**: Supabase Storage (audio files)
+- **TTS**: ElevenLabs API (user-provided key)
+
+## Pricing
+
+| Tier | Price | Characters |
+|------|-------|-----------|
+| Free | $0 | 10,000/mo (browser TTS) |
+| Pro | $9/mo | 100,000/mo |
+| Business | $29/mo | 500,000/mo |
