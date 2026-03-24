@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ebook-to-audiobook - 電子書轉有聲書</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --accent: #10b981;
+            --bg: #f9fafb;
+            --card: #ffffff;
+            --text: #111827;
+            --sub: #6b7280;
+        }
+        body {
+            font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 540px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, var(--primary), #7c3aed);
+            color: white;
+            border-radius: 16px;
+            margin-bottom: 24px;
+        }
+        .header h1 { font-size: 26px; font-weight: 800; }
+        .header p { margin-top: 8px; opacity: 0.9; }
+        .card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .step-num {
+            background: var(--primary);
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .upload-box {
+            border: 2px dashed #c7d2fe;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            background: #eef2ff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-box:hover { border-color: var(--primary); background: #e0e7ff; }
+        .upload-box p { color: var(--sub); margin-top: 10px; font-size: 14px; }
+        .upload-box .icon { font-size: 32px; }
+        input[type="file"] { display: none; }
+        select, button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            font-size: 15px;
+            margin-top: 12px;
+            font-family: inherit;
+        }
+        button {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        button:hover { transform: translateY(-1px); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .file-info {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .status {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: 10px;
+            display: none;
+        }
+        .status.show { display: block; }
+        .status.processing { background: #fef3c7; }
+        .status.success { background: #d1fae5; }
+        .status.error { background: #fee2e2; }
+        .progress-bar {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .audio-preview { margin-top: 16px; }
+        .audio-preview audio { width: 100%; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .stat {
+            background: #f3f4f6;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 12px; color: var(--sub); }
+        .formats { font-size: 12px; color: var(--sub); margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 ebook-to-audiobook</h1>
+            <p>將 EPUB、PDF、TXT 轉換為有聲書</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">
+                <span class="step-num">1</span>
+                選擇檔案
+            </div>
+            <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+                <div class="icon">📁</div>
+                <p>點擊上傳電子書</p>
+                <p class="formats">支援 EPUB、PDF、TXT</p>
+            </div>
+            <input type="file" id="fileInput" accept=".txt,.pdf,.epub">
+            <div id="fileInfo" class="file-info" style="display:none"></div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">
+                <span class="step-num">2</span>
+                選擇語音
+            </div>
+            <select id="voiceSelect">
+                <option value="zh-CN-XiaoxiaoNeural">中文 - 曉曉 (Microsoft)</option>
+                <option value="zh-CN-YunxiNeural">中文 - 雲希 (Microsoft)</option>
+                <option value="en-US-JennyNeural">English - Jenny (Microsoft)</option>
+                <option value="en-US-GuyNeural">English - Guy (Microsoft)</option>
+                <option value="ja-JP-NanamiNeural">日本語 - ななみ (Microsoft)</option>
+            </select>
+            <button id="convertBtn" onclick="convertBook()" disabled>開始轉換</button>
+        </div>
+        
+        <div id="status" class="status"></div>
+    </div>
+    
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const convertBtn = document.getElementById('convertBtn');
+        const status = document.getElementById('status');
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const size = file.size > 1024 * 1024 
+                    ? (file.size / 1024 / 1024).toFixed(2) + ' MB'
+                    : (file.size / 1024).toFixed(1) + ' KB';
+                fileInfo.innerHTML = `<strong>${file.name}</strong><br>${size}`;
+                fileInfo.style.display = 'block';
+                convertBtn.disabled = false;
+            }
+        });
+        
+        async function convertBook() {
+            const file = fileInput.files[0];
+            const voice = document.getElementById('voiceSelect').value;
+            
+            if (!file) return;
+            
+            convertBtn.disabled = true;
+            status.className = 'status show processing';
+            status.innerHTML = '<p>📤 上傳中...</p><div class="progress-bar"><div class="progress-fill" style="width:10%"></div></div>';
+            
+            try {
+                // Read file as base64
+                const arrayBuffer = await file.arrayBuffer();
+                const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+                
+                status.innerHTML = '<p>🔄 處理中...</p><div class="progress-bar"><div class="progress-fill" style="width:30%"></div></div>';
+                
+                // Send to API
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_content: base64,
+                        file_name: file.name,
+                        voice: voice
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                status.className = 'status show success';
+                status.innerHTML = `
+                    <p style="font-weight:700;font-size:16px">✅ 轉換完成！</p>
+                    <div class="stats">
+                        <div class="stat"><div class="stat-value">${data.segment_count}</div><div class="stat-label">段落</div></div>
+                        <div class="stat"><div class="stat-value">${data.text_chars}</div><div class="stat-label">字元</div></div>
+                        <div class="stat"><div class="stat-value">${Math.round(data.audio_size/1024)}</div><div class="stat-label">KB</div></div>
+                    </div>
+                    <div class="audio-preview">
+                        <p style="margin:12px 0 8px;font-weight:500">👂 預覽音訊：</p>
+                        <audio controls src="data:audio/mpeg;base64,${data.audio_base64}"></audio>
+                    </div>
+                `;
+                
+            } catch (err) {
+                status.className = 'status show error';
+                status.innerHTML = `<p>❌ 錯誤: ${err.message}</p>`;
+                convertBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
