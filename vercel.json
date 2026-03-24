@@ -7,15 +7,15 @@
       "config": {
         "maxDuration": 60
       }
-    },
-    {
-      "src": "frontend/**",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/health",
       "dest": "/api/index.py"
     },
     {
