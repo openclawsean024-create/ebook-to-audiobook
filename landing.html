@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ebook-to-audiobook｜電子書轉有聲書，一鍵完成</title>
+  <meta name="description" content="把 EPUB、PDF、TXT 電子書一鍵轉成有聲書。Microsoft Edge TTS 語音，支援中文/英文/日文，章節完整保留。免費使用。">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --primary: #7c3aed; --accent: #16a34a; --bg: #f8f7ff; --ink: #1c1917; --muted: #78716c; }
+    body { font-family: 'Noto Sans TC', sans-serif; color: var(--ink); background: var(--bg); }
+    
+    .hero { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); color: #fff; padding: 80px 20px; text-align: center; }
+    .hero h1 { font-size: clamp(28px, 6vw, 52px); font-weight: 700; margin-bottom: 16px; background: linear-gradient(135deg, #a78bfa, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 18px; color: #aaa; max-width: 600px; margin: 0 auto 32px; line-height: 1.7; }
+    .hero .cta { display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; text-decoration: none; border-radius: 12px; font-size: 18px; font-weight: 700; transition: transform 0.2s, box-shadow 0.2s; }
+    .hero .cta:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(124,58,237,0.35); }
+    .hero .badge { display: inline-block; background: rgba(52,199,89,0.2); color: #34c759; padding: 6px 14px; border-radius: 20px; font-size: 13px; margin-top: 16px; }
+    
+    .features { padding: 60px 20px; max-width: 1000px; margin: 0 auto; }
+    .features h2 { font-size: 30px; text-align: center; margin-bottom: 36px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+    .card { background: #fff; border-radius: 18px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .card-icon { font-size: 32px; margin-bottom: 12px; }
+    .card h3 { font-size: 16px; margin-bottom: 8px; color: var(--primary); }
+    .card p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+    
+    .formats { background: #fff; padding: 50px 20px; text-align: center; }
+    .formats h2 { font-size: 26px; margin-bottom: 20px; }
+    .format-list { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .format-tag { background: #f3f0ff; color: var(--primary); padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 15px; }
+    
+    .voices { padding: 50px 20px; max-width: 800px; margin: 0 auto; text-align: center; }
+    .voices h2 { font-size: 26px; margin-bottom: 20px; }
+    .voice-list { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .voice-tag { background: #fff; padding: 10px 18px; border-radius: 999px; font-size: 13px; border: 1px solid #e9d5ff; }
+    
+    .how { background: #fff; padding: 50px 20px; }
+    .how-inner { max-width: 700px; margin: 0 auto; }
+    .how h2 { font-size: 26px; text-align: center; margin-bottom: 28px; }
+    .how-step { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 20px; }
+    .step-num { width: 32px; height: 32px; background: var(--primary); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+    .step-text h4 { font-size: 15px; margin-bottom: 4px; }
+    .step-text p { color: var(--muted); font-size: 13px; }
+    
+    .cta-section { background: linear-gradient(135deg, #7c3aed, #6d28d9); padding: 60px 20px; text-align: center; color: #fff; }
+    .cta-section h2 { font-size: 26px; margin-bottom: 12px; }
+    .cta-section p { opacity: 0.9; margin-bottom: 24px; }
+    .cta-section .btn { display: inline-block; padding: 14px 32px; background: #fff; color: var(--primary); text-decoration: none; border-radius: 10px; font-weight: 700; }
+    
+    .footer { background: #1a1a2e; color: #555; padding: 36px 20px; text-align: center; font-size: 13px; }
+    .footer a { color: #888; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>📚 ebook-to-audiobook</h1>
+    <p>把 EPUB、PDF、TXT 電子書一鍵轉成有聲書。Microsoft Edge TTS 語音，章節完整保留，支援中文、英文、日文。</p>
+    <a href="/app" class="cta">🚀 開始轉換</a>
+    <div class="badge">✓ 免費 ✓ 無需安裝 ✓ 直接瀏覽器使用</div>
+  </div>
+
+  <div class="formats">
+    <h2>支援的電子書格式</h2>
+    <div class="format-list">
+      <span class="format-tag">📕 EPUB</span>
+      <span class="format-tag">📄 PDF</span>
+      <span class="format-tag">📝 TXT</span>
+    </div>
+  </div>
+
+  <div class="features">
+    <h2>功能特色</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="card-icon">🎙️</div>
+        <h3>Microsoft Edge TTS</h3>
+        <p>採用 Edge 官方語音引擎，中文發音自然流暢，支援多種語言。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📖</div>
+        <h3>保留章節結構</h3>
+        <p>EPUB 原有的章節階層完整保留，每章獨立 MP3，方便跳轉聆聽。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎛️</div>
+        <h3>語速音量控制</h3>
+        <p>可調整語速 (-50%~+100%) 與音量，適應個人偏好。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <h3>完整下載包</h3>
+        <p>下載 ZIP 包含：整本 MP3、逐章 MP3、章節對照 JSON，方便整合。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">☁️</div>
+        <h3>雲端處理</h3>
+        <p>伺服器端處理，無需本地運算。手機、平板都能用。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔄</div>
+        <h3>自動進度追蹤</h3>
+        <p>即時顯示轉換進度，告別等待焦慮。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="voices">
+    <h2>支援的聲音</h2>
+    <div class="voice-list">
+      <span class="voice-tag">🇨🇳 曉曉 (中文-女)</span>
+      <span class="voice-tag">🇨🇳 雲希 (中文-男)</span>
+      <span class="voice-tag">🇺🇸 Jenny (英文-女)</span>
+      <span class="voice-tag">🇺🇸 Guy (英文-男)</span>
+      <span class="voice-tag">🇯🇵 Nanami (日文-女)</span>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how-inner">
+      <h2>使用方式</h2>
+      <div class="how-step">
+        <div class="step-num">1</div>
+        <div class="step-text"><h4>上傳電子書</h4><p>選擇 EPUB、PDF 或 TXT 檔案</p></div>
+      </div>
+      <div class="how-step">
+        <div class="step-num">2</div>
+        <div class="step-text"><h4>選擇聲音與設定</h4><p>挑選語言與語音，調整語速音量</p></div>
+      </div>
+      <div class="how-step">
+        <div class="step-num">3</div>
+        <div class="step-text"><h4>一鍵轉換</h4><p>等待雲端處理，即時追蹤進度</p></div>
+      </div>
+      <div class="how-step">
+        <div class="step-num">4</div>
+        <div class="step-text"><h4>下載有聲書</h4><p>取得完整 ZIP 包（整本 + 逐章 MP3 + manifest）</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-section">
+    <h2>準備好轉換你的第一本電子書了嗎？</h2>
+    <p>完全免費，直接在瀏覽器中完成。</p>
+    <a href="/app" class="btn">🚀 開始轉換</a>
+  </div>
+
+  <div class="footer">
+    <p>ebook-to-audiobook | OpenClaw 生態系</p>
+    <p style="margin-top:8px;"><a href="https://github.com/openclawsean024-create/ebook-to-audiobook" target="_blank">GitHub</a></p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ebook-to-audiobook｜電子書轉有聲書</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --primary: #7c3aed; --accent: #16a34a; --warn: #d97706; --danger: #dc2626; --bg: #f8f7ff; --ink: #1c1917; --muted: #78716c; --card: #fff; --border: #e9d5ff; }
+    body { font-family: 'Noto Sans TC', sans-serif; color: var(--ink); background: var(--bg); min-height: 100vh; }
+    .container { max-width: 720px; margin: 0 auto; padding: 32px 20px 60px; }
+    .header { text-align: center; margin-bottom: 32px; }
+    .header h1 { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .header p { color: var(--muted); margin-top: 6px; font-size: 14px; }
+    .card { background: var(--card); border-radius: 20px; padding: 24px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(124,58,237,0.08); border: 1px solid var(--border); }
+    .card-title { font-weight: 700; font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .upload-zone { border: 2px dashed var(--border); border-radius: 14px; padding: 36px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: rgba(124,58,237,0.05); }
+    .upload-zone input { display: none; }
+    .upload-icon { font-size: 40px; margin-bottom: 10px; }
+    .upload-text { color: var(--muted); font-size: 14px; }
+    .upload-formats { margin-top: 10px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .format-badge { font-size: 11px; padding: 3px 8px; background: #f3f0ff; color: var(--primary); border-radius: 4px; font-weight: 600; }
+    #fileName { margin-top: 12px; font-size: 14px; color: var(--primary); font-weight: 600; display: none; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #444; }
+    .select, .input { width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; background: #fff; }
+    .select:focus, .input:focus { outline: none; border-color: var(--primary); }
+    .voice-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .voice-btn { padding: 10px 8px; border: 2px solid var(--border); border-radius: 10px; background: #fff; cursor: pointer; text-align: center; font-size: 12px; transition: 0.2s; }
+    .voice-btn:hover { border-color: var(--primary); }
+    .voice-btn.selected { border-color: var(--primary); background: rgba(124,58,237,0.08); color: var(--primary); font-weight: 700; }
+    .voice-btn .lang { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .slider-row { display: flex; gap: 16px; margin-top: 10px; }
+    .slider-item { flex: 1; }
+    .slider-item label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #555; }
+    .slider-item .val { font-size: 11px; color: var(--muted); }
+    input[type=range] { width: 100%; accent-color: var(--primary); }
+    .btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+    .btn-primary { background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.3); }
+    .progress-section { margin-top: 20px; display: none; }
+    .progress-section.show { display: block; }
+    .progress-bar { height: 10px; background: #f3f0ff; border-radius: 5px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #7c3aed, #a78bfa); width: 0%; transition: width 0.4s; border-radius: 5px; }
+    .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .progress-stage { text-align: center; font-size: 13px; font-weight: 600; color: var(--primary); margin-top: 8px; }
+    .result-section { margin-top: 20px; display: none; }
+    .result-section.show { display: block; }
+    .result-title { font-weight: 700; font-size: 15px; color: var(--accent); margin-bottom: 12px; }
+    .download-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px; width: 100%; transition: all 0.2s; text-decoration: none; }
+    .download-btn:hover { background: #15803d; transform: translateY(-1px); }
+    .download-btn.secondary { background: #fff; color: var(--ink); border: 2px solid var(--border); margin-top: 6px; }
+    .download-btn.secondary:hover { border-color: var(--primary); color: var(--primary); }
+    .chapter-list { margin-top: 14px; }
+    .chapter-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f9f7ff; border-radius: 8px; margin-bottom: 6px; font-size: 13px; }
+    .chapter-item .num { font-weight: 700; color: var(--primary); min-width: 28px; }
+    .chapter-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chapter-item .dl { font-size: 11px; padding: 4px 10px; background: var(--accent); color: #fff; border-radius: 6px; text-decoration: none; flex-shrink: 0; }
+    .notice { background: rgba(217,119,6,0.08); border-left: 4px solid var(--warn); padding: 12px 14px; border-radius: 8px; font-size: 13px; color: #92400e; margin-top: 10px; }
+    .status-msg { padding: 12px; border-radius: 8px; font-size: 13px; margin-top: 10px; display: none; }
+    .status-msg.error { background: rgba(220,38,38,0.08); color: var(--danger); display: block; }
+    .status-msg.info { background: rgba(124,58,237,0.08); color: var(--primary); display: block; }
+    .info-row { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .info-row span { background: #f3f0ff; padding: 4px 10px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📚 ebook-to-audiobook</h1>
+      <p>上傳電子書，選擇聲音，一鍵轉換成有聲書</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📁 上傳電子書</div>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".epub,.pdf,.txt">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text">點擊或拖曳檔案到此處上傳</div>
+        <div class="upload-formats">
+          <span class="format-badge">EPUB</span>
+          <span class="format-badge">PDF</span>
+          <span class="format-badge">TXT</span>
+        </div>
+      </div>
+      <div id="fileName"></div>
+      <div id="uploadStatus" class="status-msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔊 選擇語音</div>
+      <div class="voice-preview">
+        <button class="voice-btn selected" data-voice="zh-CN-XiaoxiaoNeural" onclick="selectVoice(this)">
+          曉曉
+          <div class="lang">中文-女</div>
+        </button>
+        <button class="voice-btn" data-voice="zh-CN-YunxiNeural" onclick="selectVoice(this)">
+          雲希
+          <div class="lang">中文-男</div>
+        </button>
+        <button class="voice-btn" data-voice="en-US-JennyNeural" onclick="selectVoice(this)">
+          Jenny
+          <div class="lang">英文-女</div>
+        </button>
+        <button class="voice-btn" data-voice="en-US-GuyNeural" onclick="selectVoice(this)">
+          Guy
+          <div class="lang">英文-男</div>
+        </button>
+        <button class="voice-btn" data-voice="ja-JP-NanamiNeural" onclick="selectVoice(this)">
+          Nanami
+          <div class="lang">日文-女</div>
+        </button>
+        <button class="voice-btn" data-voice="en-GB-SoniaNeural" onclick="selectVoice(this)">
+          Sonia
+          <div class="lang">英式英文</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎛️ 語速與音量</div>
+      <div class="slider-row">
+        <div class="slider-item">
+          <label>語速 <span class="val" id="rateVal">+0%</span></label>
+          <input type="range" id="rateSlider" min="-50" max="100" value="0" step="10" oninput="updateRate()">
+        </div>
+        <div class="slider-item">
+          <label>音量 <span class="val" id="volVal">+0%</span></label>
+          <input type="range" id="volSlider" min="-50" max="50" value="0" step="10" oninput="updateVolume()">
+        </div>
+      </div>
+      <div class="notice">
+        ⚠️ 語速調整範圍：-50% ~ +100%。中文有聲書建議 0%~+20%。
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="convertBtn" onclick="startConvert()" disabled>🚀 開始轉換</button>
+
+    <div class="progress-section" id="progressSection">
+      <div class="card">
+        <div class="card-title">⏳ 轉換進度</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-info">
+          <span id="progressPct">0%</span>
+          <span id="progressMsg">準備中...</span>
+        </div>
+        <div class="progress-stage" id="progressStage"></div>
+      </div>
+    </div>
+
+    <div class="result-section" id="resultSection">
+      <div class="card">
+        <div class="result-title">✅ 轉換完成！</div>
+        <div class="info-row" id="resultInfo"></div>
+        <a class="download-btn" id="downloadFullBtn" href="#" target="_blank">📦 下載完整有聲書包（含逐章 MP3 + manifest）</a>
+        <a class="download-btn secondary" id="downloadSingleBtn" href="#" target="_blank">🎧 下載整本 MP3（單一檔案）</a>
+        <div class="chapter-list" id="chapterList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+    let selectedVoice = 'zh-CN-XiaoxiaoNeural';
+    let currentJobId = null;
+    let pollTimer = null;
+
+    // Upload zone
+    const zone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    zone.addEventListener('click', () => fileInput.click());
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const f = e.dataTransfer.files[0];
+      if (f) handleFile(f);
+    });
+    fileInput.addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (f) handleFile(f);
+    });
+
+    function handleFile(file) {
+      const ext = '.' + file.name.split('.').pop().toLowerCase();
+      if (!['.epub','.pdf','.txt'].includes(ext)) {
+        showStatus('不支援的格式，請上傳 EPUB、PDF 或 TXT', 'error');
+        return;
+      }
+      selectedFile = file;
+      document.getElementById('fileName').textContent = '📄 ' + file.name + ' (' + formatSize(file.size) + ')';
+      document.getElementById('fileName').style.display = 'block';
+      document.getElementById('convertBtn').disabled = false;
+      showStatus('檔案已選擇：' + file.name, 'info');
+    }
+
+    function selectVoice(btn) {
+      document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedVoice = btn.dataset.voice;
+    }
+
+    function updateRate() {
+      const v = document.getElementById('rateSlider').value;
+      document.getElementById('rateVal').textContent = (v >= 0 ? '+' : '') + v + '%';
+    }
+
+    function updateVolume() {
+      const v = document.getElementById('volSlider').value;
+      document.getElementById('volVal').textContent = (v >= 0 ? '+' : '') + v + '%';
+    }
+
+    async function startConvert() {
+      if (!selectedFile) return;
+      if (currentJobId) { stopPoll(); currentJobId = null; }
+
+      const btn = document.getElementById('convertBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ 上傳中...';
+      hideResult();
+      hideProgress();
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('voice', selectedVoice);
+      formData.append('rate', (document.getElementById('rateSlider').value >= 0 ? '+' : '') + document.getElementById('rateSlider').value + '%');
+      formData.append('volume', (document.getElementById('volSlider').value >= 0 ? '+' : '') + document.getElementById('volSlider').value + '%');
+
+      try {
+        const res = await fetch('/api/convert', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '建立任務失敗');
+        currentJobId = data.job_id;
+        showProgress();
+        pollTimer = setInterval(pollJob, 1500);
+        showStatus('任務已建立，開始輪詢進度...', 'info');
+      } catch(e) {
+        showStatus('錯誤：' + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '🚀 開始轉換';
+      }
+    }
+
+    async function pollJob() {
+      if (!currentJobId) return;
+      try {
+        const res = await fetch('/api/jobs/' + currentJobId);
+        const job = await res.json();
+        updateProgressUI(job);
+        if (job.status === 'completed') {
+          stopPoll();
+          showResult(job);
+        } else if (job.status === 'failed') {
+          stopPoll();
+          showStatus('轉換失敗：' + (job.error || '未知錯誤'), 'error');
+          document.getElementById('convertBtn').disabled = false;
+          document.getElementById('convertBtn').textContent = '🚀 開始轉換';
+        }
+      } catch(e) {
+        console.error('Poll error:', e);
+      }
+    }
+
+    function stopPoll() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      currentJobId = null;
+    }
+
+    function updateProgressUI(job) {
+      document.getElementById('progressFill').style.width = job.progress + '%';
+      document.getElementById('progressPct').textContent = job.progress + '%';
+      document.getElementById('progressMsg').textContent = job.message || '';
+      document.getElementById('progressStage').textContent = stageLabel(job.stage);
+    }
+
+    function stageLabel(stage) {
+      const map = {
+        queued: '等待排程',
+        parsing: '解析電子書',
+        chunking: '切分章節',
+        synthesizing: '語音合成中',
+        packaging: '整理輸出',
+        completed: '完成',
+      };
+      return map[stage] || stage || '';
+    }
+
+    function showResult(job) {
+      document.getElementById('convertBtn').disabled = false;
+      document.getElementById('convertBtn').textContent = '🚀 開始轉換';
+      document.getElementById('resultSection').classList.add('show');
+
+      document.getElementById('resultInfo').innerHTML =
+        '<span>📖 ' + (job.title || selectedFile.name) + '</span>' +
+        '<span>🔊 ' + job.voice + '</span>' +
+        '<span>📝 ' + (job.text_chars || 0).toLocaleString() + ' 字</span>' +
+        '<span>📚 ' + (job.chapter_count || 0) + ' 章</span>';
+
+      if (job.zip_download_url) {
+        document.getElementById('downloadFullBtn').href = job.zip_download_url;
+        document.getElementById('downloadFullBtn').style.display = 'flex';
+      }
+      if (job.merged_download_url) {
+        document.getElementById('downloadSingleBtn').href = job.merged_download_url;
+        document.getElementById('downloadSingleBtn').style.display = 'flex';
+      }
+
+      const list = document.getElementById('chapterList');
+      if (job.chapter_files && job.chapter_files.length) {
+        list.innerHTML = '<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px;">📚 逐章下載</div>' +
+          job.chapter_files.map(ch =>
+            '<div class="chapter-item">' +
+              '<span class="num">#' + ch.index + '</span>' +
+              '<span class="name">' + ch.title + '</span>' +
+              '<a class="dl" href="' + ch.download_url + '" target="_blank">下載</a>' +
+            '</div>'
+          ).join('');
+      }
+    }
+
+    function showProgress() {
+      document.getElementById('progressSection').classList.add('show');
+      document.getElementById('progressFill').style.width = '0%';
+      document.getElementById('progressPct').textContent = '0%';
+      document.getElementById('progressMsg').textContent = '準備中...';
+      document.getElementById('progressStage').textContent = '';
+    }
+
+    function hideProgress() {
+      document.getElementById('progressSection').classList.remove('show');
+    }
+
+    function hideResult() {
+      document.getElementById('resultSection').classList.remove('show');
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('uploadStatus');
+      el.textContent = msg;
+      el.className = 'status-msg ' + type;
+      setTimeout(() => { el.className = 'status-msg'; el.textContent = ''; }, 5000);
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+      return (bytes/1048576).toFixed(1) + ' MB';
+    }
+  </script>
+</body>
+</html>
