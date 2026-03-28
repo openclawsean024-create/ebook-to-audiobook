@@ -24,7 +24,7 @@ function RegisterForm() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { plan: 'free' } },
+      options: { data: { plan } },
     })
 
     if (error) {

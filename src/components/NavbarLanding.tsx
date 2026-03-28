@@ -1,6 +1,17 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 export default function NavbarLanding() {
+  const supabase = createClient()
+  const [user, setUser] = useState<{ id?: string } | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+  }, [])
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/50 backdrop-blur-xl bg-zinc-950/80">
       <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -19,12 +30,31 @@ export default function NavbarLanding() {
           <Link href="/pricing" className="btn-ghost text-sm">
             Pricing
           </Link>
-          <Link href="/login" className="btn-ghost text-sm">
-            Login
-          </Link>
-          <Link href="/register" className="btn-primary text-sm ml-2">
-            Get Started
-          </Link>
+          {user ? (
+            <>
+              <Link href="/converter" className="btn-ghost text-sm">
+                Converter
+              </Link>
+              <Link href="/dashboard" className="btn-ghost text-sm">
+                Dashboard
+              </Link>
+              <Link href="/settings" className="btn-ghost text-sm">
+                Settings
+              </Link>
+              <Link href="/dashboard" className="btn-primary text-sm ml-2">
+                My Account
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="btn-ghost text-sm">
+                Login
+              </Link>
+              <Link href="/register" className="btn-primary text-sm ml-2">
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

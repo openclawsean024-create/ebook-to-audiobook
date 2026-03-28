@@ -14,9 +14,11 @@ export async function GET(request: Request) {
       if (user) {
         const { data: existing } = await supabase.from('profiles').select('id').eq('id', user.id).single()
         if (!existing) {
+          // Get plan from user metadata (set during registration)
+          const plan = user.user_metadata?.plan || 'free'
           await supabase.from('profiles').insert({
             id: user.id,
-            plan: 'free',
+            plan,
             characters_used: 0,
           })
         }
