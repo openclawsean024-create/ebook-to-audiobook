@@ -19,3 +19,4 @@ yarn-error.log*
 
 # Legacy files (moved to legacy/)
 index-v3.*.html
+tsconfig.tsbuildinfo
