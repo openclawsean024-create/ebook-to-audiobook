@@ -27,9 +27,21 @@ type ClonedVoice = {
 }
 
 const VOICES = [
-  { id: 'eleven_multilingual_v2', label: 'Eleven Multilingual v2 (Recommended)' },
-  { id: 'eleven_english_v2', label: 'Eleven English v2' },
-  { id: 'eleven_monolingual_v2', label: 'Eleven Monolingual v2' },
+  { id: 'eleven_multilingual_v2', label: 'Eleven Multilingual v2 (Recommended)', gender: 'any' },
+  { id: 'eleven_english_v2', label: 'Eleven English v2', gender: 'any' },
+  { id: 'eleven_monolingual_v2', label: 'Eleven Monolingual v2', gender: 'any' },
+]
+
+const VOICE_GENDER_OPTIONS = [
+  { id: 'any', label: 'Any' },
+  { id: 'male', label: 'Male 🔊' },
+  { id: 'female', label: 'Female 🔉' },
+]
+
+const TTS_ENGINES = [
+  { id: 'elevenlabs', label: 'ElevenLabs', desc: 'High quality, multilingual' },
+  { id: 'openai', label: 'OpenAI TTS', desc: 'Natural, expressive voices' },
+  { id: 'kokoro', label: 'Kokoro TTS', desc: 'Fast, lightweight' },
 ]
 
 // Estimate character count from file
@@ -44,6 +56,8 @@ export default function ConverterPage() {
   const [file, setFile] = useState<File | null>(null)
   const [estimatedChars, setEstimatedChars] = useState<number>(0)
   const [voice, setVoice] = useState('eleven_multilingual_v2')
+  const [voiceGender, setVoiceGender] = useState('any')
+  const [ttsEngine, setTtsEngine] = useState('elevenlabs')
   const [rate, setRate] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [converting, setConverting] = useState(false)
@@ -137,6 +151,8 @@ export default function ConverterPage() {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('voice', voice)
+    formData.append('voice_gender', voiceGender)
+    formData.append('tts_engine', ttsEngine)
     formData.append('rate', `+${rate}%`)
 
     try {
@@ -169,6 +185,8 @@ export default function ConverterPage() {
   }
 
   const selectedVoiceLabel = VOICES.find(v => v.id === voice)?.label || voice
+  const genderLabel = voiceGender === 'any' ? '' : voiceGender === 'male' ? '🔊 Male' : '🔉 Female'
+  const engineLabel = TTS_ENGINES.find(e => e.id === ttsEngine)?.label || 'ElevenLabs'
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -275,7 +293,66 @@ export default function ConverterPage() {
           {/* Voice & Settings */}
           <div className="card mb-6">
             <h2 className="font-semibold mb-4">2. Voice & Settings</h2>
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              {/* Voice Gender */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Voice Gender</label>
+                <div className="flex gap-2">
+                  {VOICE_GENDER_OPTIONS.map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => setVoiceGender(g.id)}
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${
+                        voiceGender === g.id
+                          ? 'bg-violet-600 border-violet-600 text-white'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* TTS Engine */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1.5">TTS Engine</label>
+                <select
+                  value={ttsEngine}
+                  onChange={(e) => setTtsEngine(e.target.value)}
+                  className="input-field"
+                >
+                  {TTS_ENGINES.map((e) => (
+                    <option key={e.id} value={e.id}>{e.label}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-zinc-500 mt-1.5">
+                  {TTS_ENGINES.find(e => e.id === ttsEngine)?.desc}
+                </p>
+              </div>
+
+              {/* Speed */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Speed: {rate >= 0 ? '+' : ''}{rate}%</label>
+                <input
+                  type="range"
+                  min={-50}
+                  max={50}
+                  step={5}
+                  value={rate}
+                  onChange={(e) => setRate(Number(e.target.value))}
+                  className="w-full accent-violet-600"
+                />
+                <div className="flex justify-between text-xs text-zinc-500 mt-1">
+                  <span>Slower</span>
+                  <span>Normal</span>
+                  <span>Faster</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Voice Select */}
+            <div className="grid md:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1.5">AI Voice</label>
                 <select
@@ -303,7 +380,7 @@ export default function ConverterPage() {
                   <p className="text-xs text-zinc-500 mt-1.5">
                     {clonedVoices.some(v => v.elevenlabs_voice_id === voice)
                       ? 'Using your cloned voice'
-                      : 'Using ElevenLabs built-in voice'}
+                      : `${engineLabel} · ${genderLabel || 'Any gender'}`}
                   </p>
                 )}
                 {plan !== 'free' && (
@@ -319,23 +396,6 @@ export default function ConverterPage() {
                     {voiceLabOpen ? 'Hide' : 'Create'} Voice Clone
                   </button>
                 )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Speed: {rate >= 0 ? '+' : ''}{rate}%</label>
-                <input
-                  type="range"
-                  min={-50}
-                  max={50}
-                  step={5}
-                  value={rate}
-                  onChange={(e) => setRate(Number(e.target.value))}
-                  className="w-full accent-violet-600"
-                />
-                <div className="flex justify-between text-xs text-zinc-500 mt-1">
-                  <span>Slower</span>
-                  <span>Normal</span>
-                  <span>Faster</span>
-                </div>
               </div>
             </div>
 
@@ -367,7 +427,7 @@ export default function ConverterPage() {
                 </button>
               </div>
               <p className="text-xs text-zinc-600 mt-1.5">
-                Voice: {selectedVoiceLabel} · Speed: {rate >= 0 ? '+' : ''}{rate}%
+                {engineLabel} · {genderLabel || 'Any'} · Speed: {rate >= 0 ? '+' : ''}{rate}%
               </p>
             </div>
           </div>
