@@ -123,7 +123,49 @@ A polished web app that converts ebooks (EPUB, PDF, TXT) into high-quality audio
 - error (text, nullable)
 - created_at, updated_at
 
-## 8. Technical Notes
+## 8. Voice Clone Feature
+
+### Concept
+Users upload voice samples to create a personal AI voice clone via ElevenLabs, then use it for ebook conversions.
+
+### User Flow
+1. User navigates to **Voice Lab** section in Converter
+2. Uploads audio sample (MP3/WAV/M4A, 30s–5min recommended)
+3. System sends to ElevenLabs Voice Clone API → returns `voice_id`
+4. User names their clone → saved to profile
+5. User selects their clone voice from voice dropdown
+6. Conversion uses cloned voice for TTS
+
+### API Endpoints
+- `POST /api/voices/clone` — Upload audio, create ElevenLabs voice clone
+  - Request: `FormData` with `audio` (file) and `name` (string)
+  - Response: `{ voice_id, name, created_at }`
+- `GET /api/voices` — List user's cloned voices
+- `DELETE /api/voices/[id]` — Delete a cloned voice
+
+### Data Model
+### `cloned_voices`
+- id (uuid, primary key)
+- user_id (uuid, references profiles)
+- elevenlabs_voice_id (text, ElevenLabs API voice ID)
+- name (text, user-provided name)
+- audio_sample_url (text, nullable, stored sample)
+- created_at (timestamptz)
+
+### UI Components
+- **Voice Lab panel** in Converter page (collapsible)
+- Audio upload with waveform/player preview
+- Clone progress indicator
+- My Cloned Voices list with delete option
+- Voice dropdown includes cloned voices with "🎙️" badge
+
+### Technical Notes
+- Voice cloning requires ElevenLabs API key (Pro+ only)
+- Audio is sent directly to ElevenLabs API (not stored server-side beyond sample URL)
+- Min sample: 30 seconds, recommended: 1-5 minutes
+- ElevenLabs free tier: 10min clone time/month; paid: more
+
+## 9. Technical Notes
 
 - Auth: Supabase Auth with email/password, sessions via HTTP-only cookies
 - File upload: client → Supabase Storage → server processes

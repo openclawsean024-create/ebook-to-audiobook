@@ -1,9 +1,2 @@
-fastapi==0.115.0
-python-multipart==0.0.12
-edge-tts==6.1.12
-gTTS==2.5.1
-pypdf==4.3.1
-ebooklib==0.18
-beautifulsoup4==4.12.3
-lxml==5.2.2
-uvicorn[standard]==0.30.0
+# Python dependencies moved to legacy/app.py
+# This file is kept for reference only.

@@ -76,6 +76,35 @@ CREATE POLICY "Anyone can view audiobooks" ON storage.objects
 CREATE POLICY "Users can delete own audiobooks" ON storage.objects
   FOR DELETE USING (bucket_id = 'audiobooks' AND auth.uid()::text = (storage.foldername(name))[1]);
 
+-- Cloned voices table
+CREATE TABLE IF NOT EXISTS public.cloned_voices (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  elevenlabs_voice_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  audio_sample_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.cloned_voices ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own cloned voices" ON public.cloned_voices
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Storage bucket for voice samples
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('voice-samples', 'voice-samples', false)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Users can upload own voice samples" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'voice-samples' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can view own voice samples" ON storage.objects
+  FOR SELECT USING (bucket_id = 'voice-samples' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can delete own voice samples" ON storage.objects
+  FOR DELETE USING (bucket_id = 'voice-samples' AND auth.uid()::text = (storage.foldername(name))[1]);
+
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
