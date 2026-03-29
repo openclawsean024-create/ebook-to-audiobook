@@ -62,3 +62,4 @@ vercel deploy
 | Free | $0 | 10,000/mo (browser TTS) |
 | Pro | $9/mo | 100,000/mo |
 | Business | $29/mo | 500,000/mo |
+
