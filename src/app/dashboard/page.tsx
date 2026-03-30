@@ -150,7 +150,7 @@ export default function DashboardPage() {
             </div>
             {usagePercent >= 80 && (
               <p className="text-xs text-amber-400 mt-2">
-                ⚠️ You've used {usagePercent}% of your monthly limit.{' '}
+                You've used {usagePercent}% of your monthly limit.{' '}
                 <Link href="/pricing" className="underline">Upgrade plan →</Link>
               </p>
             )}

@@ -34,8 +34,8 @@ const VOICES = [
 
 const VOICE_GENDER_OPTIONS = [
   { id: 'any', label: 'Any' },
-  { id: 'male', label: 'Male 🔊' },
-  { id: 'female', label: 'Female 🔉' },
+  { id: 'male', label: 'Male' },
+  { id: 'female', label: 'Female' },
 ]
 
 const TTS_ENGINES = [
@@ -185,7 +185,7 @@ export default function ConverterPage() {
   }
 
   const selectedVoiceLabel = VOICES.find(v => v.id === voice)?.label || voice
-  const genderLabel = voiceGender === 'any' ? '' : voiceGender === 'male' ? '🔊 Male' : '🔉 Female'
+  const genderLabel = voiceGender === 'any' ? '' : voiceGender === 'male' ? 'Male' : 'Female'
   const engineLabel = TTS_ENGINES.find(e => e.id === ttsEngine)?.label || 'ElevenLabs'
 
   return (
@@ -368,7 +368,7 @@ export default function ConverterPage() {
                   {clonedVoices.length > 0 && (
                     <optgroup label="My Cloned Voices">
                       {clonedVoices.map((v) => (
-                        <option key={v.elevenlabs_voice_id} value={v.elevenlabs_voice_id}>🎙️ {v.name}</option>
+                        <option key={v.elevenlabs_voice_id} value={v.elevenlabs_voice_id}>{v.name}</option>
                       ))}
                     </optgroup>
                   )}
@@ -541,7 +541,7 @@ export default function ConverterPage() {
                     {clonedVoices.map((v) => (
                       <div key={v.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50">
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-lg">🎙️</span>
+                          <span className="text-xs text-zinc-500 font-mono">CLONE</span>
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{v.name}</p>
                             <p className="text-xs text-zinc-500">
