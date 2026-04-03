@@ -1,175 +1,140 @@
-# ebook-to-audiobook Product Specification
+# 【eBook to Audiobook】規格計劃書
 
-## 1. Concept & Vision
+## 1. 專案概述
 
-A polished web app that converts ebooks (EPUB, PDF, TXT) into high-quality audiobooks using ElevenLabs AI voices. Users bring their own ElevenLabs API key, pay only for what they use, and get professional-grade audio output with chapter segmentation.
+### 1.1 專案背景與目的
 
-**Personality:** Clean, developer-friendly, no-nonsense. Like Stripe meets Notion — functional but beautiful.
+現代人時間破碎，通勤、運動、做家事的時間通常無法閱讀，卻適合「聽書」。然而市面上的有聲書多為英文，中文書籍的有聲版本嚴重不足。本工具讓使用者上傳 PDF/epub 文件，AI 自動識別章節結構、生成章節摘要，並以自然的 AI 語音朗讀為有聲書。我們支援多角色配音（不同章節或旁白/正文切換不同聲音），並提供 MP3 音檔下載，讓使用者能在任何播放器收聽。
+### 1.2 目標受眾（TA）
 
-## 2. Design Language
+- 通勤族 / 駕駛：需要解放雙手，用耳朵吸收資訊
+- 視障/閱讀障礙者：有聲書是剛性需求，但中文內容匱乏
+- 自媒體創作者：將書籍內容轉為 Podcast 素材
+- 語言學習者：透過有聲書邊聽邊學，同時吸收知識
+### 1.3 專案範圍
 
-- **Aesthetic:** Dark-mode-first, minimal luxury. Inspired by Vercel, Linear, Raycast.
-- **Colors:**
-  - Background: `#09090b` (zinc-950)
-  - Surface: `#18181b` (zinc-900)
-  - Border: `#27272a` (zinc-800)
-  - Text primary: `#fafafa` (zinc-50)
-  - Text muted: `#a1a1aa` (zinc-400)
-  - Accent: `#7c3aed` (violet-600)
-  - Accent hover: `#6d28d9` (violet-700)
-  - Success: `#22c55e`
-  - Warning: `#f59e0b`
-  - Error: `#ef4444`
-- **Typography:** Inter (Google Fonts), JetBrains Mono for code/keys
-- **Spacing:** 4px base grid, generous padding (24px-48px sections)
-- **Motion:** Subtle fade-ins, smooth transitions (200-300ms ease)
-- **Icons:** Lucide React
+In Scope：PDF / epub 上傳與解析、章節結構識別、章節摘要生成（可跳過閱讀直接聽重點）、AI 語音朗讀（ElevenLabs / Azure TTS）、MP3 音檔下載、深色/淺色主題、章節進度管理
+Out of Scope：即時串流播放（先完成下載再播放）、自定義配音員聲音、商業有聲書出版
+### 1.4 參考網站分析
 
-## 3. Pricing Tiers
+- Google Read Aloud（Google Document AI）：免費但只有英文、機器音色明顯
+- ElevenLabs：我們語音品質標的，但無文件解析功能（需自建）
+- Audible：內容豐富但無自製功能，中文書籍少
+## 2. 資訊架構與動線
 
-| Tier | Price | Characters/month | Features |
-|------|-------|-----------------|----------|
-| Free | $0 | 10,000 (via Web Speech API) | Browser TTS only, no download |
-| Pro | $9/mo | 100,000 (ElevenLabs) | Full MP3 download, chapters, priority |
-| Business | $29/mo | 500,000 (ElevenLabs) | + Batch processing, team seats, API access |
+### 2.1 網站地圖（Sitemap）
 
-## 4. User Flow
+我的書籍庫（書架/上傳/處理狀態）→ 書籍詳情（章節列表/摘要預覽/播放器/下載）→ 處理記錄（佇列進度/歷史）→ 設定（預設語速/配音員/輸出格式）
+### 2.2 使用者動線（Mermaid）
 
-1. **Landing** → Sign up / Login
-2. **Dashboard** → See usage stats, past conversions, manage API key
-3. **Converter** → Upload ebook, select voice, convert, download MP3
-4. **Settings** → Add/manage ElevenLabs API key, update plan
+ flowchart TD
+    A([使用者進入我的書籍庫]) --> B{意圖}
+    B -->|上傳新書| C[拖放 PDF 或 epub]
+    B -->|繼續處理| D[選擇已有書籍]
+    C --> E[檔案上傳中]
+    E --> F{解析成功?}
+    F -->|失敗| G[顯示錯誤提示]
+    F -->|成功| H[自動進入書籍詳情]
+    H --> I[顯示章節結構]
+    D --> I
+    I --> J{操作}
+    J -->|聽摘要| K[播放 AI 摘要]
+    J -->|完整朗讀| L[開始處理]
+    J -->|下載| M[選擇格式下載 MP3]
+    L --> N[處理佇列顯示進度]
+    N --> O[處理完成通知]
+    O --> P[播放或下載]
+    K --> Q([完成])
+    M --> Q
+    P --> Q
+### 2.3 使用者旅程圖（Mermaid）
 
-## 5. Pages
+ journey
+    title eBook to Audiobook 旅程
+    section 上傳階段
+      下載書籍 PDF: 5: 通勤族
+      拖放到網站上傳: 4: 視障者家屬
+    section 處理階段
+      看到章節結構確認: 4: 所有人
+      選擇語音風格: 5: 自媒體創作者
+      等待 AI 處理: 3: 所有人
+    section 收聽階段
+      先聽摘要快速瀏覽: 5: 通勤族
+      通勤時段完整收聽: 5: 駕駛
+      下載離線收聽: 4: 語言學習者
+    section 複習階段
+      標記章節待下次收聽: 4: 視障者
+      用摘要做讀書筆記: 5: 自媒體創作者
+## 3. 視覺與 UI
 
-### `/` — Landing Page
-- Hero with animated headline
-- Feature highlights (3 cards)
-- Pricing preview
-- CTA buttons (Get Started / Try Free)
+### 3.1 品牌設計指南
 
-### `/pricing` — Pricing Page
-- 3-column pricing cards
-- Feature comparison table
-- FAQ section
+- Primary #6366F1：主要按鈕、品牌元素、播放控制項
+- Secondary #0F172A：深色背景、主要容器底色
+- Accent #10B981：處理完成、成功下載 / Progress #F59E0B：處理中
+### 3.2 跨裝置支援
 
-### `/converter` — Converter (protected)
-- File upload (drag & drop)
-- Voice selection dropdown
-- Rate/speed control
-- Progress bar during conversion
-- Chapter list with individual downloads
-- Full audiobook download
+Desktop ≥1024px：雙欄佈局（書籍列表 + 詳情側邊播放器） / Tablet 768-1023px：單欄，播放器固定底部 / Mobile <768px：全功能支援（上傳/處理進度/播放器/下載）
+## 4. 前端功能規格
 
-### `/dashboard` — Dashboard (protected)
-- Usage stats (characters used, conversions count)
-- Recent conversions list
-- Quick actions
+- PDF / epub 拖放上傳：支援 PDF 和 epub，最大 50MB
+- 自動章節識別：解析目錄結構，顯示章節列表
+- 章節摘要生成：AI 自動生成每章摘要（可跳過直接聽）
+- 處理進度追蹤：即時顯示處理階段（解析/摘要/TTS/合成）
+- 內建播放器：播放/暫停、進度條、語速調整（0.75x/1x/1.25x/1.5x/2x）
+- 章節跳轉：點擊章節直接跳轉播放
+- MP3 單章/全書下載：支援單章或完整書籍打包 ZIP
+- 閱讀進度同步：localStorage 記錄當前播放位置
+- 深色/淺色主題
+## 5. 後端與技術規格
 
-### `/settings` — Settings (protected)
-- ElevenLabs API key management
-- Account info
+### 5.1 技術棧
 
-### `/login` & `/register` — Auth pages
+- 前端：Next.js 14（App Router）+ Tailwind CSS + React Player（音訊播放）
+- 文件解析：PyMuPDF（PDF）/ epub Library（epub）
+- AI 摘要：Claude API / GPT-4o
+- 語音合成：ElevenLabs API 或 Azure Cognitive Services TTS
+- 後端：FastAPI + Celery（任務佇列） + Redis
+- 音檔儲存：Cloudflare R2 / AWS S3（MP3 檔案）
+- 資料庫：PostgreSQL + Redis 快取
+## 6. 專案時程與驗收標準
 
-## 6. API Design
+### 6.1 里程碑時程
 
-### Auth Endpoints
-- `POST /api/auth/register` — Create account
-- `POST /api/auth/login` — Login
-- `POST /api/auth/logout` — Logout
-- `GET /api/auth/me` — Get current user
+ timeline
+    title eBook to Audiobook 開發時程
+    phase 1: 文件解析引擎 (Week 1-2)
+        UI/UX 設計稿確認 : 4 days
+        PDF 解析模組 : 3 days
+        epub 解析模組 : 3 days
+    phase 2: AI 處理流水線 (Week 3-5)
+        Claude/GPT 摘要生成 API : 4 days
+        ElevenLabs TTS 串接 : 3 days
+        進度追蹤系統 : 3 days
+        MP3 合成與拼接 : 4 days
+    phase 3: 前端播放器 (Week 6-7)
+        書籍詳情頁 : 3 days
+        內建播放器 UI : 4 days
+        進度同步功能 : 3 days
+    phase 4: 測試與交付 (Week 8-9)
+        端到端測試（完整流程） : 4 days
+        處理穩定性測試 : 3 days
+        Bug 修復與文件 : 3 days
+### 6.2 驗收標準
 
-### Conversion Endpoints
-- `POST /api/conversions` — Create conversion job
-- `GET /api/conversions` — List user's conversions
-- `GET /api/conversions/[id]` — Get conversion status/result
-- `DELETE /api/conversions/[id]` — Cancel/delete
+- 支援瀏覽器：Chrome 120+、Safari 17+
+- PDF 解析成功率 > 95%（標準格式）
+- 語音自然度：MOS Score > 4.0（ElevenLabs）
+- 完整朗讀處理時間：< 10 分鐘（10 萬字書籍）
+- MP3 音檔品質：128kbps AAC
+### 6.3 保固與維護
 
-### API Key Endpoints
-- `GET /api/keys` — Get user's ElevenLabs key status
-- `POST /api/keys` — Save/update ElevenLabs API key
+上線後 30 天：免費 Bug 修復 / AI API 費用監控：每月追蹤 Claude + ElevenLabs 用量與成本 / 資料保留：R2 儲存 180 天後自動清除
+## 7. 功能勾選清單
 
-### Usage Endpoints
-- `GET /api/usage` — Get current usage stats
+### 前端
 
-## 7. Data Model (Supabase)
+### 後端
 
-### `users` (managed by Supabase Auth)
-- id (uuid, primary key)
-- email
-- created_at
+### DevOps
 
-### `profiles`
-- id (uuid, references auth.users)
-- plan (enum: free, pro, business)
-- elevenlabs_api_key (encrypted, nullable)
-- characters_used (int, monthly reset)
-- billing_cycle_start (timestamp)
-- created_at, updated_at
-
-### `conversions`
-- id (uuid, primary key)
-- user_id (uuid, references profiles)
-- title (text)
-- file_type (enum: epub, pdf, txt)
-- voice (text)
-- status (enum: queued, processing, completed, failed)
-- progress (int 0-100)
-- chapter_count (int)
-- character_count (int)
-- audio_url (text, nullable)
-- chapter_audios (jsonb)
-- error (text, nullable)
-- created_at, updated_at
-
-## 8. Voice Clone Feature
-
-### Concept
-Users upload voice samples to create a personal AI voice clone via ElevenLabs, then use it for ebook conversions.
-
-### User Flow
-1. User navigates to **Voice Lab** section in Converter
-2. Uploads audio sample (MP3/WAV/M4A, 30s–5min recommended)
-3. System sends to ElevenLabs Voice Clone API → returns `voice_id`
-4. User names their clone → saved to profile
-5. User selects their clone voice from voice dropdown
-6. Conversion uses cloned voice for TTS
-
-### API Endpoints
-- `POST /api/voices/clone` — Upload audio, create ElevenLabs voice clone
-  - Request: `FormData` with `audio` (file) and `name` (string)
-  - Response: `{ voice_id, name, created_at }`
-- `GET /api/voices` — List user's cloned voices
-- `DELETE /api/voices/[id]` — Delete a cloned voice
-
-### Data Model
-### `cloned_voices`
-- id (uuid, primary key)
-- user_id (uuid, references profiles)
-- elevenlabs_voice_id (text, ElevenLabs API voice ID)
-- name (text, user-provided name)
-- audio_sample_url (text, nullable, stored sample)
-- created_at (timestamptz)
-
-### UI Components
-- **Voice Lab panel** in Converter page (collapsible)
-- Audio upload with waveform/player preview
-- Clone progress indicator
-- My Cloned Voices list with delete option
-- Voice dropdown includes cloned voices with "🎙️" badge
-
-### Technical Notes
-- Voice cloning requires ElevenLabs API key (Pro+ only)
-- Audio is sent directly to ElevenLabs API (not stored server-side beyond sample URL)
-- Min sample: 30 seconds, recommended: 1-5 minutes
-- ElevenLabs free tier: 10min clone time/month; paid: more
-
-## 9. Technical Notes
-
-- Auth: Supabase Auth with email/password, sessions via HTTP-only cookies
-- File upload: client → Supabase Storage → server processes
-- TTS: ElevenLabs Text-to-Speech API (server-side, user provides key)
-- Conversion: async job with polling (client polls GET endpoint)
-- Storage: Supabase Storage for uploaded files and output audio
-- Deployment: Vercel (Next.js detected automatically)
