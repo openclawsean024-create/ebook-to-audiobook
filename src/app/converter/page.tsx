@@ -80,6 +80,7 @@ export default function ConverterPage() {
   const audioInputRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dropHappenedRef = useRef(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -131,8 +132,19 @@ export default function ConverterPage() {
     e.preventDefault()
     e.stopPropagation()
     setDragging(false)
-    const f = e.dataTransfer.files[0]
-    if (f) setFile(f)
+    dropHappenedRef.current = true
+    setTimeout(() => { dropHappenedRef.current = false }, 300)
+    const items = e.dataTransfer.items
+    if (items && items.length > 0) {
+      const item = items[0]
+      if (item.kind === 'file') {
+        const f = item.getAsFile()
+        if (f) setFile(f)
+      }
+    } else {
+      const f = e.dataTransfer.files[0]
+      if (f) setFile(f)
+    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -225,7 +237,11 @@ export default function ConverterPage() {
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragging(true) }}
               onDragLeave={(e) => { e.stopPropagation(); setDragging(false) }}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                // Prevent file picker from opening after a file drop (spurious click on some browsers)
+                if (dropHappenedRef.current) return
+                fileInputRef.current?.click()
+              }}
               className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-950/20' : 'border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/30'}`}
             >
               <input ref={fileInputRef} type="file" accept=".epub,.txt" onChange={handleFileChange} className="hidden" />
