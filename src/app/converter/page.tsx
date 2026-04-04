@@ -129,6 +129,7 @@ export default function ConverterPage() {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     setDragging(false)
     const f = e.dataTransfer.files[0]
     if (f) setFile(f)
@@ -221,8 +222,8 @@ export default function ConverterPage() {
           <div className="card mb-6">
             <h2 className="font-semibold mb-4">1. Upload Ebook</h2>
             <div
-              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-              onDragLeave={() => setDragging(false)}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragging(true) }}
+              onDragLeave={(e) => { e.stopPropagation(); setDragging(false) }}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-950/20' : 'border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/30'}`}
