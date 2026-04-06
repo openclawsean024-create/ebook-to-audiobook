@@ -81,6 +81,7 @@ export default function ConverterPage() {
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropHappenedRef = useRef(false)
+  const dragCounterRef = useRef(0)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -131,6 +132,7 @@ export default function ConverterPage() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    dragCounterRef.current = 0
     setDragging(false)
     dropHappenedRef.current = true
     setTimeout(() => { dropHappenedRef.current = false }, 300)
@@ -234,8 +236,8 @@ export default function ConverterPage() {
           <div className="card mb-6">
             <h2 className="font-semibold mb-4">1. Upload Ebook</h2>
             <div
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragging(true) }}
-              onDragLeave={(e) => { e.stopPropagation(); setDragging(false) }}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); dragCounterRef.current++; setDragging(true) }}
+              onDragLeave={(e) => { e.stopPropagation(); dragCounterRef.current--; if (dragCounterRef.current === 0) setDragging(false) }}
               onDrop={handleDrop}
               onClick={() => {
                 // Prevent file picker from opening after a file drop (spurious click on some browsers)
