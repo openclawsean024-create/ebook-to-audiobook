@@ -66,6 +66,8 @@ export default function ConverterPage() {
   const [previewText, setPreviewText] = useState('')
   const [apiKeyNeeded, setApiKeyNeeded] = useState(false)
   const [error, setError] = useState('')
+  const [formatError, setFormatError] = useState('')
+  const [sizeError, setSizeError] = useState('')
   const [plan, setPlan] = useState<string>('free')
   const [planLimit, setPlanLimit] = useState(10000)
   const [charactersUsed, setCharactersUsed] = useState(0)
@@ -129,29 +131,60 @@ export default function ConverterPage() {
     }
   }, [])
 
+  const MAX_FILE_SIZE = 4 * 1024 * 1024 // 4MB
+  const ALLOWED_EXTENSIONS = ['.pdf', '.epub', '.txt']
+  const ALLOWED_MIME_TYPES = ['application/pdf', 'application/epub+zip', 'text/plain']
+
+  function validateFile(file: File): string | null {
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (!ALLOWED_EXTENSIONS.includes(ext) && !ALLOWED_MIME_TYPES.includes(file.type)) {
+      return `不支援的格式「${ext}」，目前支援：PDF、EPUB、TXT`
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return `檔案太大（${(file.size / 1024 / 1024).toFixed(2)} MB），最大限制 4MB`
+    }
+    return null
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormatError('')
+    setSizeError('')
+    const f = e.target.files?.[0]
+    if (f) {
+      const validationError = validateFile(f)
+      if (validationError) {
+        if (validationError.includes('格式')) setFormatError(validationError)
+        else setSizeError(validationError)
+        setFile(null)
+        setEstimatedChars(0)
+        return
+      }
+      setFile(f)
+    }
+  }
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     dragCounterRef.current = 0
     setDragging(false)
+    setFormatError('')
+    setSizeError('')
     dropHappenedRef.current = true
     setTimeout(() => { dropHappenedRef.current = false }, 300)
-    const items = e.dataTransfer.items
-    if (items && items.length > 0) {
-      const item = items[0]
-      if (item.kind === 'file') {
-        const f = item.getAsFile()
-        if (f) setFile(f)
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      const f = files[0]
+      const validationError = validateFile(f)
+      if (validationError) {
+        if (validationError.includes('格式')) setFormatError(validationError)
+        else setSizeError(validationError)
+        setFile(null)
+        setEstimatedChars(0)
+        return
       }
-    } else {
-      const f = e.dataTransfer.files[0]
-      if (f) setFile(f)
+      setFile(f)
     }
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    if (f) setFile(f)
   }
 
   const remainingChars = planLimit - charactersUsed
@@ -160,6 +193,8 @@ export default function ConverterPage() {
   const handleConvert = async () => {
     if (!file || !user) return
     setError('')
+    setFormatError('')
+    setSizeError('')
     setConversion(null)
     setConverting(true)
 
@@ -242,11 +277,12 @@ export default function ConverterPage() {
               onClick={() => {
                 // Prevent file picker from opening after a file drop (spurious click on some browsers)
                 if (dropHappenedRef.current) return
+                setFormatError(''); setSizeError('')
                 fileInputRef.current?.click()
               }}
               className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-950/20' : 'border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/30'}`}
             >
-              <label htmlFor="ebook-file-input" className="cursor-pointer absolute inset-0" onClick={(e) => e.stopPropagation()} />
+              <label htmlFor="ebook-file-input" className="cursor-pointer absolute inset-0" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }} />
               <input
                 ref={fileInputRef}
                 id="ebook-file-input"
@@ -289,6 +325,30 @@ export default function ConverterPage() {
                 </>
               )}
             </div>
+
+            {/* Format Error */}
+            {formatError && (
+              <div className="mt-3 p-3 rounded-lg bg-red-950/30 border border-red-800/30 text-red-400 text-sm flex items-start gap-2">
+                <svg className="w-4 h-4 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="15" y1="9" x2="9" y2="15"/>
+                  <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                {formatError}
+              </div>
+            )}
+
+            {/* Size Error */}
+            {sizeError && (
+              <div className="mt-3 p-3 rounded-lg bg-red-950/30 border border-red-800/30 text-red-400 text-sm flex items-start gap-2">
+                <svg className="w-4 h-4 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                {sizeError}
+              </div>
+            )}
 
             {/* Character estimate */}
             {file && estimatedChars > 0 && (
@@ -492,6 +552,7 @@ export default function ConverterPage() {
                     onClick={() => audioInputRef.current?.click()}
                     className={`border border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${cloneAudio ? 'border-violet-500 bg-violet-950/20' : 'border-zinc-700 hover:border-zinc-600'}`}
                   >
+                    <label htmlFor="audio-sample-input" className="absolute inset-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); audioInputRef.current?.click() }}>
                     <input
                       id="audio-sample-input"
                       ref={audioInputRef}
@@ -502,8 +563,9 @@ export default function ConverterPage() {
                         const f = e.target.files?.[0]
                         if (f) { setCloneAudio(f); setCloneError('') }
                       }}
-                      className="absolute opacity-0 w-px h-px pointer-events-none"
+                      className="opacity-0 w-px h-px pointer-events-none"
                     />
+                    </label>
                     {cloneAudio ? (
                       <div className="flex items-center justify-center gap-2">
                         <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
