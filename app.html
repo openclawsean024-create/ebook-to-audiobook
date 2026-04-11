@@ -16,6 +16,7 @@
     .card { background: var(--card); border-radius: 20px; padding: 24px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(124,58,237,0.08); border: 1px solid var(--border); }
     .card-title { font-weight: 700; font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
     .upload-zone { border: 2px dashed var(--border); border-radius: 14px; padding: 36px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .upload-label { display: block; cursor: pointer; }
     .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: rgba(124,58,237,0.05); }
     .upload-zone input { display: none; }
     .upload-icon { font-size: 40px; margin-bottom: 10px; }
@@ -76,10 +77,12 @@
 
     <div class="card">
       <div class="card-title">📁 上傳電子書</div>
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept=".epub,.pdf,.txt">
-        <div class="upload-icon">📄</div>
-        <div class="upload-text">點擊或拖曳檔案到此處上傳</div>
+      <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="上傳電子書">
+        <label for="fileInput" class="upload-label" id="uploadLabel">
+          <div class="upload-icon">📄</div>
+          <div class="upload-text">點擊或拖曳檔案到此處上傳</div>
+        </label>
+        <input type="file" id="fileInput" accept=".epub,.pdf,.txt,.mobi" aria-label="上傳電子書檔案">
         <div class="upload-formats">
           <span class="format-badge">EPUB</span>
           <span class="format-badge">PDF</span>
