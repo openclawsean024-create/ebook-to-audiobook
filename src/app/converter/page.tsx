@@ -246,18 +246,17 @@ export default function ConverterPage() {
               }}
               className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-950/20' : 'border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/30'}`}
             >
-              <label htmlFor="ebook-file-input" className="cursor-pointer absolute inset-0">
+              <label htmlFor="ebook-file-input" className="cursor-pointer absolute inset-0" onClick={(e) => e.stopPropagation()} />
               <input
                 ref={fileInputRef}
                 id="ebook-file-input"
                 type="file"
-                accept=".epub,.pdf,.txt,.PDF,application/pdf"
+                accept=".pdf,.epub,.txt,application/pdf"
                 onChange={handleFileChange}
                 aria-label="Upload ebook file"
                 className="opacity-0 w-px h-px pointer-events-none"
                 onClick={(e) => e.stopPropagation()}
               />
-            </label>
               {file ? (
                 <div className="flex items-center justify-center gap-3">
                   <svg className="w-8 h-8 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
