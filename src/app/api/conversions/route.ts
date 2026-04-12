@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { v4 as uuidv4 } from 'uuid'
 import AdmZip from 'adm-zip'
-import pdfParse from 'pdf-parse'
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 
 export const runtime = 'nodejs'
 
@@ -45,16 +45,25 @@ async function parseTxt(buffer: Buffer): Promise<{ title: string; text: string; 
   return { title: 'Untitled', text, chapters: [{ title: 'Chapter 1', text }] }
 }
 
-// Parse PDF text
+// Parse PDF text using pdfjs-dist
 async function parsePdf(buffer: Buffer): Promise<{ title: string; text: string; chapters: Array<{ title: string; text: string }> }> {
-  const data = await pdfParse(buffer)
-  const fullText = data.text.trim()
-  // Split into rough chapters by double newlines or page markers
+  const data = new Uint8Array(buffer)
+  const pdf = await getDocument({ data, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise
+  let text = ''
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    const pageText = (content.items as Array<{ str?: string }>)
+      .map(item => item.str || '')
+      .join(' ')
+    text += pageText + '\n\n'
+  }
+  const fullText = text.trim()
   const sections = fullText.split(/\n\s*\n+/).filter(s => s.trim().length > 50)
   const chapters = sections.length > 0
     ? sections.map((s, i) => ({ title: `Part ${i + 1}`, text: s.trim() }))
     : [{ title: 'Chapter 1', text: fullText }]
-  return { title: data.meta?.title || 'Untitled', text: fullText, chapters }
+  return { title: 'Untitled', text: fullText, chapters }
 }
 
 // Convert text to speech via ElevenLabs

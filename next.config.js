@@ -5,7 +5,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   experimental: {
-    serverComponentsExternalPackages: ['adm-zip', 'pdfjs-dist', 'pdf-parse'],
+    serverComponentsExternalPackages: ['adm-zip', 'pdfjs-dist'],
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -16,11 +16,6 @@ const nextConfig = {
         path: false,
         crypto: false,
       }
-    }
-    // pdf-parse ESM has no default export — force CJS version
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'pdf-parse': 'pdf-parse/dist/pdf-parse/cjs/index.cjs',
     }
     return config
   },
