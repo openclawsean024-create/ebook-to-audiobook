@@ -5,13 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import Navbar from '@/components/Navbar'
 import Link from 'next/link'
 
-type ChapterPreview = {
-  index: number
-  title: string
-  charCount: number
-  previewText: string
-}
-
 type ConversionStatus = {
   id: string
   status: 'queued' | 'processing' | 'completed' | 'failed'
@@ -21,9 +14,8 @@ type ConversionStatus = {
   chapter_count: number
   character_count: number
   audio_url?: string
-  chapter_audios?: Array<{ title: string; url: string; index: number; char_count?: number }>
+  chapter_audios?: Array<{ title: string; url: string; index: number }>
   error?: string
-  shared_link?: string
 }
 
 type ClonedVoice = {
@@ -58,37 +50,6 @@ async function estimateChars(file: File): Promise<number> {
   return text.length
 }
 
-// V4: parse EPUB chapters client-side using JSZip
-async function parseEpubChapters(file: File): Promise<ChapterPreview[]> {
-  const JSZip = (await import('jszip')).default
-  const zip = await JSZip.loadAsync(file)
-  const chapters: ChapterPreview[] = []
-  const entries = Object.keys(zip.files)
-  const htmlEntries = entries.filter(n => /\.(xhtml|html?|htm)$/i.test(n) && !n.includes('nav') && !n.includes('toc'))
-  for (const name of htmlEntries.sort()) {
-    const entry = zip.files[name]
-    if (entry.dir) continue
-    const content = await entry.async('string')
-    const clean = content
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-      .replace(/\s+/g, ' ').trim()
-    if (clean.length > 100) {
-      chapters.push({
-        index: chapters.length + 1,
-        title: `Chapter ${chapters.length + 1}`,
-        charCount: clean.length,
-        previewText: clean.slice(0, 300),
-      })
-    }
-    if (chapters.length >= 30) break
-  }
-  return chapters
-}
-
 export default function ConverterPage() {
   const supabase = createClient()
   const [user, setUser] = useState<{ id?: string; email?: string } | null>(null)
@@ -118,15 +79,6 @@ export default function ConverterPage() {
   const [cloning, setCloning] = useState(false)
   const [cloneError, setCloneError] = useState('')
   const [cloneSuccess, setCloneSuccess] = useState('')
-  // V4: chapter-level preview
-  const [chapters, setChapters] = useState<ChapterPreview[]>([])
-  const [selectedChapters, setSelectedChapters] = useState<Set<number>>(new Set())
-  const [previewingChapter, setPreviewingChapter] = useState<number | null>(null)
-  // V5: batch download
-  const [downloading, setDownloading] = useState(false)
-  // V6: share
-  const [shareLink, setShareLink] = useState('')
-  const [linkCopied, setLinkCopied] = useState(false)
   const audioInputRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -162,32 +114,10 @@ export default function ConverterPage() {
       .catch(() => {})
   }, [voiceLabOpen, user])
 
-  // Estimate chars and parse chapters when file changes (V4)
+  // Estimate chars when file changes
   useEffect(() => {
-    if (!file) { setEstimatedChars(0); setChapters([]); setSelectedChapters(new Set()); return }
-    estimateChars(file).then(async (chars) => {
-      setEstimatedChars(chars)
-      try {
-        const ext = file.name.split('.').pop()?.toLowerCase()
-        if (ext === 'epub') {
-          const parsed = await parseEpubChapters(file)
-          setChapters(parsed)
-          setSelectedChapters(new Set(parsed.map(c => c.index)))
-        } else {
-          // TXT: split by double newlines into rough sections
-          const text = await file.text()
-          const chunks = text.split(/\n\s*\n/).map(t => t.trim()).filter(t => t.length > 50)
-          const parsed: ChapterPreview[] = chunks.slice(0, 30).map((chunk, i) => ({
-            index: i + 1,
-            title: `Part ${i + 1}`,
-            charCount: chunk.length,
-            previewText: chunk.slice(0, 300),
-          }))
-          setChapters(parsed)
-          setSelectedChapters(new Set(parsed.map(c => c.index)))
-        }
-      } catch { setChapters([]) }
-    }).catch(() => setEstimatedChars(0))
+    if (!file) { setEstimatedChars(0); return }
+    estimateChars(file).then(setEstimatedChars).catch(() => setEstimatedChars(0))
   }, [file])
 
   const pollConversion = useCallback(async (jobId: string) => {
@@ -302,77 +232,6 @@ export default function ConverterPage() {
     window.speechSynthesis.speak(utterance)
     utterance.onend = () => setPreviewing(false)
     utterance.onerror = () => setPreviewing(false)
-  }
-
-  // V4: preview a single chapter via browser TTS
-  const handlePreviewChapter = (ch: ChapterPreview) => {
-    if (previewingChapter === ch.index) {
-      window.speechSynthesis.cancel()
-      setPreviewingChapter(null)
-      return
-    }
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(ch.previewText)
-    utterance.lang = voice.includes('english') ? 'en-US' : 'zh-CN'
-    utterance.rate = 1 + rate / 100
-    setPreviewingChapter(ch.index)
-    utterance.onend = () => setPreviewingChapter(null)
-    utterance.onerror = () => setPreviewingChapter(null)
-    window.speechSynthesis.speak(utterance)
-  }
-
-  const toggleChapter = (idx: number) => {
-    setSelectedChapters(prev => {
-      const next = new Set(prev)
-      if (next.has(idx)) next.delete(idx)
-      else next.add(idx)
-      return next
-    })
-  }
-
-  // V5: batch download all chapter MP3s as a ZIP
-  const handleBatchDownload = async () => {
-    if (!conversion?.chapter_audios?.length) return
-    setDownloading(true)
-    try {
-      const urls = conversion.chapter_audios.map(ch => ({
-        url: ch.url,
-        name: `chapter-${String(ch.index).padStart(3, '0')}-${ch.title.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`,
-      }))
-      const responses = await Promise.all(urls.map(u => fetch(u.url)))
-      const blobs = await Promise.all(responses.map(r => r.blob()))
-      const JSZip = (await import('jszip')).default
-      const zip = new JSZip()
-      urls.forEach((u, i) => zip.file(u.name, blobs[i]))
-      const zipBlob = await zip.generateAsync({ type: 'blob' })
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(zipBlob)
-      a.download = `${(conversion.title || 'audiobook').replace(/[^a-zA-Z0-9]/g, '_')}_chapters.zip`
-      a.click()
-      URL.revokeObjectURL(a.href)
-    } catch (err) {
-      console.error('Batch download failed:', err)
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  // V6: create/share a public link for this conversion
-  const handleShare = async () => {
-    if (!conversion?.id) return
-    if (shareLink) return // already generated
-    try {
-      const res = await fetch(`/api/conversions/${conversion.id}/share`, { method: 'POST' })
-      const data = await res.json()
-      if (data.share_url) setShareLink(data.share_url)
-    } catch {}
-  }
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareLink).then(() => {
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 2000)
-    })
   }
 
   const selectedVoiceLabel = VOICES.find(v => v.id === voice)?.label || voice
@@ -519,94 +378,6 @@ export default function ConverterPage() {
               </div>
             )}
           </div>
-
-          {/* V4: Chapter-Level Preview & Selection */}
-          {file && chapters.length > 0 && !conversion && (
-            <div className="card mb-6 border-violet-800/30">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold flex items-center gap-2">
-                  <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-                    <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-                  </svg>
-                  V4 · Chapter Preview ({selectedChapters.size}/{chapters.length} selected)
-                </h2>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSelectedChapters(new Set(chapters.map(c => c.index)))}
-                    className="text-xs text-violet-400 hover:text-violet-300"
-                  >
-                    Select All
-                  </button>
-                  <button
-                    onClick={() => setSelectedChapters(new Set())}
-                    className="text-xs text-zinc-500 hover:text-zinc-300"
-                  >
-                    Deselect All
-                  </button>
-                </div>
-              </div>
-
-              {/* Chapter list with checkboxes and preview */}
-              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                {chapters.map((ch) => (
-                  <div
-                    key={ch.index}
-                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
-                      selectedChapters.has(ch.index)
-                        ? 'bg-zinc-800/60 border-violet-800/40'
-                        : 'bg-zinc-900 border-zinc-800 opacity-60'
-                    }`}
-                  >
-                    {/* Checkbox */}
-                    <input
-                      type="checkbox"
-                      checked={selectedChapters.has(ch.index)}
-                      onChange={() => toggleChapter(ch.index)}
-                      className="mt-1 w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-violet-600 focus:ring-violet-600 flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="text-sm font-medium truncate">{ch.title}</p>
-                        <span className="text-xs text-zinc-500 flex-shrink-0">{ch.charCount.toLocaleString()} chars</span>
-                      </div>
-                      <p className="text-xs text-zinc-500 truncate mb-2">{ch.previewText}</p>
-                      {/* Preview button */}
-                      <button
-                        onClick={() => handlePreviewChapter(ch)}
-                        className={`text-xs flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition-colors ${
-                          previewingChapter === ch.index
-                            ? 'border-amber-600 bg-amber-950/30 text-amber-400'
-                            : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
-                        }`}
-                      >
-                        {previewingChapter === ch.index ? (
-                          <>
-                            <span className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                            Playing...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                              <polygon points="5 3 19 12 5 21 5 3"/>
-                            </svg>
-                            Preview
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-xs text-zinc-600 mt-3">
-                Selected chapters will be included in conversion.{' '}
-                {selectedChapters.size === 0 && (
-                  <span className="text-amber-400">Select at least one chapter to convert.</span>
-                )}
-              </p>
-            </div>
-          )}
 
           {/* Voice & Settings */}
           <div className="card mb-6">
@@ -953,7 +724,13 @@ export default function ConverterPage() {
                   <div className="progress-bar mb-3">
                     <div className="progress-bar-fill" style={{ width: `${conversion.progress}%` }}></div>
                   </div>
-                  <p className="text-sm text-zinc-400">{conversion.message}</p>
+                  <p className="text-sm text-zinc-400">
+                    {conversion.message?.includes('片段')
+                      ? conversion.message
+                      : conversion.message?.includes('章節') || conversion.message?.includes('Chapter')
+                        ? conversion.message
+                        : `${conversion.progress}%`}
+                  </p>
                 </>
               )}
 
@@ -1075,75 +852,6 @@ export default function ConverterPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* V5: Batch Download All Chapters as ZIP */}
-                      <div className="mt-4 pt-4 border-t border-zinc-800">
-                        <button
-                          onClick={handleBatchDownload}
-                          disabled={downloading || !conversion?.chapter_audios?.length}
-                          className="btn-secondary text-sm w-full justify-center"
-                        >
-                          {downloading ? (
-                            <span className="flex items-center gap-2">
-                              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              Packaging chapters...
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-2">
-                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" x2="12" y1="15" y2="3"/>
-                              </svg>
-                              Download All Chapters as ZIP ({conversion.chapter_audios.length} files)
-                            </span>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* V6: Share This Audiobook */}
-                  <div className="border-t border-zinc-800 pt-4">
-                    <p className="text-sm font-medium mb-3 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                      </svg>
-                      Share This Audiobook
-                    </p>
-                    {!shareLink ? (
-                      <button onClick={handleShare} className="btn-secondary text-sm w-full justify-center">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                        </svg>
-                        Generate Shareable Link
-                      </button>
-                    ) : (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          readOnly
-                          value={shareLink}
-                          className="input-field flex-1 text-xs"
-                        />
-                        <button onClick={handleCopyLink} className="btn-primary text-sm px-4">
-                          {linkCopied ? (
-                            <span className="flex items-center gap-1 text-green-300">
-                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12"/>
-                              </svg>
-                              Copied!
-                            </span>
-                          ) : 'Copy'}
-                        </button>
-                      </div>
-                    )}
-                    <p className="text-xs text-zinc-600 mt-2">
-                      Anyone with the link can listen to this audiobook without signing up.
-                    </p>
-                  </div>
 
                   {/* New conversion */}
                   <button

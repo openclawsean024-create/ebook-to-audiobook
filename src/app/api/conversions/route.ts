@@ -152,10 +152,39 @@ export async function POST(request: NextRequest) {
     const audioUrls: Array<{ index: number; title: string; url: string }> = []
     let processedChars = 0
 
+    // Pre-calculate total chunks for progress tracking
+    let totalChunks = 0
+    for (const chapter of chapters) {
+      totalChunks += chunkText(chapter.text).length
+    }
+    let chunkIndex = 0
+
     for (let i = 0; i < chapters.length; i++) {
       const chapter = chapters[i]
-      await supabase.from('conversions').update({ progress: 10 + Math.round((i / chapters.length) * 80), message: `Converting chapter ${i + 1}/${chapters.length}...` }).eq('id', conversionId)
+      const chapterChunks = chunkText(chapter.text)
 
+      for (const chunk of chapterChunks) {
+        chunkIndex++
+        const progress = Math.round((chunkIndex / totalChunks) * 90)
+        await supabase.from('conversions').update({
+          progress,
+          message: `第 ${chunkIndex} / ${totalChunks} 片段...`
+        }).eq('id', conversionId)
+
+        try {
+          const audioBuffer = await synthesizeText(chunk, profile.elevenlabs_api_key!, voice)
+          audioUrls.push({ index: chunkIndex, title: `片段 ${chunkIndex}`, url: '' })
+          processedChars += chunk.length
+        } catch (err) {
+          console.error(`Chunk ${chunkIndex} failed:`, err)
+        }
+      }
+    }
+
+    // Re-synthesize and collect chapter buffers for final merge
+    const chapterMp3Map: Array<{ index: number; buffer: Buffer }> = []
+    for (let i = 0; i < chapters.length; i++) {
+      const chapter = chapters[i]
       try {
         const chunks = chunkText(chapter.text)
         const audioBuffers: Buffer[] = []
@@ -164,21 +193,40 @@ export async function POST(request: NextRequest) {
           audioBuffers.push(audioBuffer)
         }
         const merged = mergeMp3Buffers(audioBuffers)
-        const fileName = `${conversionId}/chapter-${String(i + 1).padStart(3, '0')}.mp3`
-        const { error: uploadError } = await supabase.storage.from('audiobooks').upload(fileName, merged, { contentType: 'audio/mpeg', upsert: true })
-        if (uploadError) throw uploadError
-        const { data: urlData } = supabase.storage.from('audiobooks').getPublicUrl(fileName)
-        audioUrls.push({ index: i + 1, title: chapter.title, url: urlData.publicUrl })
-        processedChars += chapter.text.length
+        chapterMp3Map.push({ index: i + 1, buffer: merged })
       } catch (err) {
-        console.error(`Chapter ${i + 1} failed:`, err)
+        console.error(`Chapter ${i + 1} final merge failed:`, err)
       }
     }
 
-    await supabase.from('conversions').update({ status: 'completed', progress: 100, message: 'Conversion completed', audio_url: audioUrls[0]?.url || '', chapter_audios: audioUrls }).eq('id', conversionId)
+    await supabase.from('conversions').update({ progress: 95, message: '合併中...' }).eq('id', conversionId)
+
+    // Merge all chapters into single audiobook MP3
+    const chapterBuffers = chapterMp3Map.sort((a, b) => a.index - b.index).map(c => c.buffer)
+    const fullAudiobookBuffer = mergeMp3Buffers(chapterBuffers)
+
+    // Upload full audiobook
+    const fullFileName = `${conversionId}/full-audiobook.mp3`
+    const { error: uploadError } = await supabase.storage.from('audiobooks').upload(fullFileName, fullAudiobookBuffer, { contentType: 'audio/mpeg', upsert: true })
+    if (uploadError) throw uploadError
+    const { data: urlData } = supabase.storage.from('audiobooks').getPublicUrl(fullFileName)
+    const fullAudioUrl = urlData.publicUrl
+
+    // Upload individual chapters
+    const chapterAudios: Array<{ index: number; title: string; url: string }> = []
+    for (let i = 0; i < chapters.length; i++) {
+      const chapter = chapters[i]
+      const fileName = `${conversionId}/chapter-${String(i + 1).padStart(3, '0')}.mp3`
+      const { error: chapterUploadError } = await supabase.storage.from('audiobooks').upload(fileName, chapterMp3Map[i]?.buffer || Buffer.alloc(0), { contentType: 'audio/mpeg', upsert: true })
+      if (chapterUploadError) throw chapterUploadError
+      const { data: chapterUrlData } = supabase.storage.from('audiobooks').getPublicUrl(fileName)
+      chapterAudios.push({ index: i + 1, title: chapter.title, url: chapterUrlData.publicUrl })
+    }
+
+    await supabase.from('conversions').update({ status: 'completed', progress: 100, message: 'Conversion completed', audio_url: fullAudioUrl, chapter_audios: chapterAudios }).eq('id', conversionId)
     await supabase.from('profiles').update({ characters_used: used + processedChars }).eq('id', user.id)
 
-    return NextResponse.json({ id: conversionId, status: 'completed', progress: 100, message: 'Conversion completed', title, chapter_count: chapters.length, character_count: processedChars, audio_url: audioUrls[0]?.url || '', chapter_audios: audioUrls })
+    return NextResponse.json({ id: conversionId, status: 'completed', progress: 100, message: 'Conversion completed', title, chapter_count: chapters.length, character_count: processedChars, audio_url: fullAudioUrl, chapter_audios: chapterAudios })
   } catch (err) {
     console.error('Conversion error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
