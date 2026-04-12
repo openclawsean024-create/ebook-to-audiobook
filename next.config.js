@@ -17,6 +17,11 @@ const nextConfig = {
         crypto: false,
       }
     }
+    // pdf-parse ESM has no default export — force CJS version
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'pdf-parse': 'pdf-parse/dist/pdf-parse/cjs/index.cjs',
+    }
     return config
   },
 }
