@@ -5,7 +5,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   experimental: {
-    serverComponentsExternalPackages: ['adm-zip', 'pdfjs-dist'],
+    serverComponentsExternalPackages: ['adm-zip', 'pdfjs-dist', 'pdf-parse'],
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
