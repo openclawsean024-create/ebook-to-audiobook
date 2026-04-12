@@ -65,7 +65,6 @@ async function parsePdf(buffer: Buffer): Promise<{ title: string; text: string; 
     : [{ title: 'Chapter 1', text: fullText }]
   return { title: 'Untitled', text: fullText, chapters }
 }
-}
 
 // Convert text to speech via ElevenLabs
 async function synthesizeText(text: string, apiKey: string, voiceId: string): Promise<Buffer> {
