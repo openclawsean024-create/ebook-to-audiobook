@@ -320,7 +320,7 @@ export default function ConverterPage() {
                     <polyline points="17 8 12 3 7 8"/>
                     <line x1="12" x2="12" y1="3" y2="15"/>
                   </svg>
-                  <p className="text-zinc-500 mb-1">Drop EPUB or TXT here</p>
+                  <p className="text-zinc-500 mb-1">Drop EPUB, PDF, or TXT here</p>
                   <p className="text-xs text-zinc-600">or click to browse</p>
                 </>
               )}

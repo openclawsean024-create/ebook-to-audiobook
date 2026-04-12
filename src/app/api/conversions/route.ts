@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { v4 as uuidv4 } from 'uuid'
 import AdmZip from 'adm-zip'
+import pdfParse from 'pdf-parse'
 
 export const runtime = 'nodejs'
 
@@ -42,6 +43,18 @@ async function parseEpub(buffer: Buffer): Promise<{ title: string; text: string;
 async function parseTxt(buffer: Buffer): Promise<{ title: string; text: string; chapters: Array<{ title: string; text: string }> }> {
   const text = buffer.toString('utf-8').trim()
   return { title: 'Untitled', text, chapters: [{ title: 'Chapter 1', text }] }
+}
+
+// Parse PDF text
+async function parsePdf(buffer: Buffer): Promise<{ title: string; text: string; chapters: Array<{ title: string; text: string }> }> {
+  const data = await pdfParse(buffer)
+  const fullText = data.text.trim()
+  // Split into rough chapters by double newlines or page markers
+  const sections = fullText.split(/\n\s*\n+/).filter(s => s.trim().length > 50)
+  const chapters = sections.length > 0
+    ? sections.map((s, i) => ({ title: `Part ${i + 1}`, text: s.trim() }))
+    : [{ title: 'Chapter 1', text: fullText }]
+  return { title: data.meta?.title || 'Untitled', text: fullText, chapters }
 }
 
 // Convert text to speech via ElevenLabs
@@ -107,14 +120,15 @@ export async function POST(request: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
     const ext = file.name.split('.').pop()?.toLowerCase()
-    if (!['epub', 'txt'].includes(ext || '')) {
-      return NextResponse.json({ error: 'Unsupported file type. Use EPUB or TXT.' }, { status: 400 })
+    if (!['epub', 'txt', 'pdf'].includes(ext || '')) {
+      return NextResponse.json({ error: 'Unsupported file type. Use EPUB, PDF, or TXT.' }, { status: 400 })
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
     let parsed: { title: string; text: string; chapters: Array<{ title: string; text: string }> }
     if (ext === 'epub') parsed = await parseEpub(buffer)
+    else if (ext === 'pdf') parsed = await parsePdf(buffer)
     else parsed = await parseTxt(buffer)
 
     const { title, text, chapters } = parsed
