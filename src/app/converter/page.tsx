@@ -58,7 +58,7 @@ export default function ConverterPage() {
   const [voice, setVoice] = useState('eleven_multilingual_v2')
   const [voiceGender, setVoiceGender] = useState('any')
   const [ttsEngine, setTtsEngine] = useState('elevenlabs')
-  const [rate, setRate] = useState(0)
+  const [rate, setRate] = useState(1) // playback speed multiplier: 0.5, 1, 1.5, 2
   const [dragging, setDragging] = useState(false)
   const [converting, setConverting] = useState(false)
   const [conversion, setConversion] = useState<ConversionStatus | null>(null)
@@ -203,7 +203,7 @@ export default function ConverterPage() {
     formData.append('voice', voice)
     formData.append('voice_gender', voiceGender)
     formData.append('tts_engine', ttsEngine)
-    formData.append('rate', `+${rate}%`)
+    formData.append('rate', String(rate))
 
     try {
       const res = await fetch('/api/conversions', {
@@ -227,7 +227,7 @@ export default function ConverterPage() {
     // Use Web Speech API (works for all tiers)
     const utterance = new SpeechSynthesisUtterance(previewText)
     utterance.lang = voice.includes('english') ? 'en-US' : voice.includes('multilingual') ? 'zh-CN' : 'en-US'
-    utterance.rate = 1 + rate / 100
+    utterance.rate = rate
     window.speechSynthesis.cancel()
     window.speechSynthesis.speak(utterance)
     utterance.onend = () => setPreviewing(false)
@@ -271,23 +271,26 @@ export default function ConverterPage() {
           <div className="card mb-6">
             <h2 className="font-semibold mb-4">1. Upload Ebook</h2>
             <div
+              role="button"
+              tabIndex={0}
+              aria-label="拖放或點擊上傳檔案"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); dragCounterRef.current++; setDragging(true) }}
               onDragLeave={(e) => { e.stopPropagation(); dragCounterRef.current--; if (dragCounterRef.current === 0) setDragging(false) }}
               onDrop={handleDrop}
               onClick={() => {
-                // Prevent file picker from opening after a file drop (spurious click on some browsers)
                 if (dropHappenedRef.current) return
                 setFormatError(''); setSizeError('')
                 fileInputRef.current?.click()
               }}
-              className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-violet-500 bg-violet-950/20' : 'border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/30'}`}
+              className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-amber-500 bg-amber-950/20' : 'border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/30'}`}
             >
               <label htmlFor="ebook-file-input" className="cursor-pointer absolute inset-0" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }} />
               <input
                 ref={fileInputRef}
                 id="ebook-file-input"
                 type="file"
-                accept=".pdf,.epub,.txt,application/pdf"
+                accept=".pdf,.epub,.txt,application/pdf,audio/*"
                 onChange={handleFileChange}
                 aria-label="Upload ebook file"
                 className="opacity-0 w-px h-px pointer-events-none"
@@ -295,17 +298,18 @@ export default function ConverterPage() {
               />
               {file ? (
                 <div className="flex items-center justify-center gap-3">
-                  <svg className="w-8 h-8 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <svg className="w-8 h-8 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/>
                   </svg>
                   <div className="text-left">
-                    <p className="font-medium">{file.name}</p>
+                    <p className="font-medium animate-upload-success">{file.name}</p>
                     <p className="text-sm text-zinc-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setFile(null); setEstimatedChars(0) }}
                     className="ml-4 text-zinc-500 hover:text-red-400 transition-colors"
+                    aria-label="移除檔案"
                     title="Remove file"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -372,7 +376,7 @@ export default function ConverterPage() {
             {file && estimatedChars > 0 && !willExceed && (
               <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-violet-600 rounded-full"
+                  className="h-full bg-amber-500 rounded-full"
                   style={{ width: `${Math.min(100, (estimatedChars / planLimit) * 100)}%` }}
                 />
               </div>
@@ -393,7 +397,7 @@ export default function ConverterPage() {
                       onClick={() => setVoiceGender(g.id)}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${
                         voiceGender === g.id
-                          ? 'bg-violet-600 border-violet-600 text-white'
+                          ? 'bg-amber-500 border-amber-500 text-white'
                           : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-600'
                       }`}
                     >
@@ -420,22 +424,26 @@ export default function ConverterPage() {
                 </p>
               </div>
 
-              {/* Speed */}
+              {/* Speed Segmented Control */}
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Speed: {rate >= 0 ? '+' : ''}{rate}%</label>
-                <input
-                  type="range"
-                  min={-50}
-                  max={50}
-                  step={5}
-                  value={rate}
-                  onChange={(e) => setRate(Number(e.target.value))}
-                  className="w-full accent-violet-600"
-                />
-                <div className="flex justify-between text-xs text-zinc-500 mt-1">
-                  <span>Slower</span>
-                  <span>Normal</span>
-                  <span>Faster</span>
+                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Speed</label>
+                <div className="flex rounded-lg border border-zinc-700 overflow-hidden" role="group" aria-label="播放速度">
+                  {[0.5, 1, 1.5, 2].map((speed) => (
+                    <button
+                      key={speed}
+                      type="button"
+                      onClick={() => setRate(speed)}
+                      aria-label={`播放速度 ${speed}x`}
+                      aria-pressed={rate === speed}
+                      className={`flex-1 py-2 px-2 text-xs font-medium border-r last:border-r-0 border-zinc-700 transition-all ${
+                        rate === speed
+                          ? 'bg-amber-500 text-white border-amber-500'
+                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                      }`}
+                    >
+                      {speed}x
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -475,7 +483,7 @@ export default function ConverterPage() {
                 {plan !== 'free' && (
                   <button
                     onClick={() => setVoiceLabOpen(o => !o)}
-                    className="mt-2 text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1"
+                    className="mt-2 text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
                   >
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
@@ -506,6 +514,7 @@ export default function ConverterPage() {
                   onClick={handlePreview}
                   disabled={previewing || !previewText.trim()}
                   className="btn-secondary whitespace-nowrap"
+                  aria-label={previewing ? '播放中' : '播放預覽'}
                 >
                   {previewing ? (
                     <span className="flex items-center gap-2">
@@ -523,10 +532,10 @@ export default function ConverterPage() {
 
           {/* Voice Lab */}
           {voiceLabOpen && plan !== 'free' && (
-            <div className="card mb-6 border-violet-800/30">
+            <div className="card mb-6 border-amber-800/30">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold flex items-center gap-2">
-                  <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                     <line x1="12" x2="12" y1="19" y2="22"/>
@@ -550,7 +559,7 @@ export default function ConverterPage() {
                   <label htmlFor="audio-sample-input" className="block text-xs font-medium text-zinc-300 mb-1">Audio Sample</label>
                   <div
                     onClick={() => audioInputRef.current?.click()}
-                    className={`border border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${cloneAudio ? 'border-violet-500 bg-violet-950/20' : 'border-zinc-700 hover:border-zinc-600'}`}
+                    className={`border border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${cloneAudio ? 'border-amber-500 bg-amber-950/20' : 'border-zinc-700 hover:border-zinc-600'}`}
                   >
                     <label htmlFor="audio-sample-input" className="absolute inset-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); audioInputRef.current?.click() }}>
                     <input
@@ -568,7 +577,7 @@ export default function ConverterPage() {
                     </label>
                     {cloneAudio ? (
                       <div className="flex items-center justify-center gap-2">
-                        <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
                         </svg>
                         <span className="text-sm text-zinc-300">{cloneAudio.name}</span>
@@ -640,7 +649,7 @@ export default function ConverterPage() {
                             <p className="text-xs text-zinc-500">
                               {new Date(v.created_at).toLocaleDateString()}
                               {v.audio_sample_url && (
-                                <a href={v.audio_sample_url} target="_blank" rel="noreferrer" className="ml-2 text-violet-400 hover:underline">Play sample</a>
+                                <a href={v.audio_sample_url} target="_blank" rel="noreferrer" className="ml-2 text-amber-400 hover:underline" aria-label={`播放${v.name}範例`}>Play sample</a>
                               )}
                             </p>
                           </div>
@@ -656,6 +665,7 @@ export default function ConverterPage() {
                           }}
                           className="text-zinc-500 hover:text-red-400 ml-2 flex-shrink-0"
                           title="Delete voice"
+                          aria-label={`刪除語音克隆${v.name}`}
                         >
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
@@ -721,8 +731,36 @@ export default function ConverterPage() {
 
               {conversion.status !== 'completed' && conversion.status !== 'failed' && (
                 <>
-                  <div className="progress-bar mb-3">
-                    <div className="progress-bar-fill" style={{ width: `${conversion.progress}%` }}></div>
+                  {/* SVG Progress Ring + Progress Bar */}
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="relative w-12 h-12 flex-shrink-0">
+                      <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+                        <circle cx="24" cy="24" r="20" fill="none" stroke="#27272a" strokeWidth="4"/>
+                        <circle
+                          cx="24" cy="24" r="20" fill="none"
+                          stroke="#F5A623" strokeWidth="4"
+                          strokeLinecap="round"
+                          strokeDasharray="125.6"
+                          strokeDashoffset={125.6 * (1 - conversion.progress / 100)}
+                          className="transition-all duration-500 ease-out"
+                        />
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-zinc-300">
+                        {conversion.progress}%
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <div
+                        className="progress-bar"
+                        role="progressbar"
+                        aria-label="轉換進度"
+                        aria-valuenow={conversion.progress}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      >
+                        <div className="progress-bar-fill" style={{ width: `${conversion.progress}%` }}></div>
+                      </div>
+                    </div>
                   </div>
                   <p className="text-sm text-zinc-400">
                     {conversion.message?.includes('片段')
@@ -768,18 +806,19 @@ export default function ConverterPage() {
 
                   {/* Audio Player */}
                   {conversion.audio_url ? (
-                    <div>
+                    <div role="region" aria-label="音訊播放器">
                       <p className="text-sm font-medium mb-3">Full Audiobook</p>
                       <audio
                         controls
                         className="w-full h-10 rounded-lg"
                         src={conversion.audio_url}
+                        aria-label="有聲書播放器"
                       >
                         Your browser does not support audio playback.
                       </audio>
                       <div className="flex gap-3 mt-3">
-                        <a href={conversion.audio_url} download className="btn-primary text-sm">
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <a href={conversion.audio_url} download className="btn-primary text-sm" aria-label="下載完整有聲書">
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                             <polyline points="7 10 12 15 17 10"/>
                             <line x1="12" x2="12" y1="15" y2="3"/>
@@ -804,12 +843,12 @@ export default function ConverterPage() {
                               : 'Add your ElevenLabs API key in Settings to enable audio generation.'}
                           </p>
                           {plan === 'free' && (
-                            <Link href="/pricing" className="inline-flex items-center gap-1 mt-2 text-xs text-violet-400 hover:text-violet-300">
+                            <Link href="/pricing" className="inline-flex items-center gap-1 mt-2 text-xs text-amber-400 hover:text-amber-300">
                               View plans →
                             </Link>
                           )}
                           {plan !== 'free' && (
-                            <Link href="/settings" className="inline-flex items-center gap-1 mt-2 text-xs text-violet-400 hover:text-violet-300">
+                            <Link href="/settings" className="inline-flex items-center gap-1 mt-2 text-xs text-amber-400 hover:text-amber-300">
                               Add API key in Settings →
                             </Link>
                           )}
@@ -839,8 +878,8 @@ export default function ConverterPage() {
                               >
                                 <source src={ch.url} type="audio/mpeg" />
                               </audio>
-                              <a href={ch.url} download className="btn-secondary text-xs py-1.5 px-3">
-                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <a href={ch.url} download className="btn-secondary text-xs py-1.5 px-3" aria-label={`下載第${ch.index}章`}>
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                   <polyline points="7 10 12 15 17 10"/>
                                   <line x1="12" x2="12" y1="15" y2="3"/>

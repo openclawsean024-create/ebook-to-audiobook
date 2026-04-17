@@ -11,8 +11,9 @@
   --border: #27272a;
   --text: #fafafa;
   --text-muted: #a1a1aa;
-  --accent: #7c3aed;
-  --accent-hover: #6d28d9;
+  --primary: #F5A623;
+  --primary-hover: #D97706;
+  --secondary: #D4885C;
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
@@ -70,7 +71,7 @@ code, pre, .font-mono {
 
 @layer components {
   .btn-primary {
-    @apply px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-all duration-200 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-all duration-200 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
@@ -82,7 +83,7 @@ code, pre, .font-mono {
   }
 
   .input-field {
-    @apply w-full px-4 py-2.5 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-transparent transition-all;
+    @apply w-full px-4 py-2.5 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all;
   }
 
   .card {
@@ -116,12 +117,53 @@ code, pre, .font-mono {
 .animate-fade-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
 .animate-fade-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
 
+/* Staggered card fade-in */
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-card-0 { animation: cardFadeIn 0.4s ease-out forwards; }
+.animate-card-1 { animation: cardFadeIn 0.4s ease-out 0.03s forwards; opacity: 0; }
+.animate-card-2 { animation: cardFadeIn 0.4s ease-out 0.06s forwards; opacity: 0; }
+.animate-card-3 { animation: cardFadeIn 0.4s ease-out 0.09s forwards; opacity: 0; }
+
+/* Upload success bounce */
+@keyframes uploadBounce {
+  0% { transform: scale(0.95); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.animate-upload-success {
+  animation: uploadBounce 0.15s ease-out forwards;
+}
+
+/* Progress ring spinner */
+@keyframes progressRingSpin {
+  0% { stroke-dashoffset: 180; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes progressRingRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-progress-ring {
+  animation: progressRingRotate 1.2s linear infinite;
+}
+
+.animate-progress-ring-inner {
+  animation: progressRingSpin 1.2s ease-in-out infinite;
+}
+
 .progress-bar {
   @apply h-2 bg-zinc-800 rounded-full overflow-hidden;
 }
 
 .progress-bar-fill {
-  @apply h-full bg-gradient-to-r from-violet-600 to-violet-400 rounded-full transition-all duration-500 ease-out;
+  @apply h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500 ease-out;
 }
 
 .badge {
@@ -129,5 +171,5 @@ code, pre, .font-mono {
 }
 
 .badge-free { @apply bg-zinc-800 text-zinc-400 border border-zinc-700; }
-.badge-pro { @apply bg-violet-900/50 text-violet-300 border border-violet-700/50; }
+.badge-pro { @apply bg-amber-900/50 text-amber-300 border border-amber-700/50; }
 .badge-business { @apply bg-amber-900/50 text-amber-300 border border-amber-700/50; }
