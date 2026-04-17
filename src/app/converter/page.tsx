@@ -290,7 +290,7 @@ export default function ConverterPage() {
                 ref={fileInputRef}
                 id="ebook-file-input"
                 type="file"
-                accept=".pdf,.epub,.txt,application/pdf,audio/*"
+                accept=".pdf,.epub,.txt,application/pdf,application/epub+zip,text/plain"
                 onChange={handleFileChange}
                 aria-label="Upload ebook file"
                 className="opacity-0 w-px h-px pointer-events-none"
@@ -692,6 +692,7 @@ export default function ConverterPage() {
               onClick={handleConvert}
               disabled={!file || converting || willExceed}
               className="btn-primary w-full justify-center py-3 text-base mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Convert to audiobook"
             >
               {converting ? (
                 <span className="flex items-center gap-2">
@@ -734,11 +735,11 @@ export default function ConverterPage() {
                   {/* SVG Progress Ring + Progress Bar */}
                   <div className="flex items-center gap-4 mb-3">
                     <div className="relative w-12 h-12 flex-shrink-0">
-                      <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+                      <svg className="w-12 h-12 progress-ring-spin" viewBox="0 0 48 48">
                         <circle cx="24" cy="24" r="20" fill="none" stroke="#27272a" strokeWidth="4"/>
                         <circle
                           cx="24" cy="24" r="20" fill="none"
-                          stroke="#F5A623" strokeWidth="4"
+                          stroke="#F59E0B" strokeWidth="4"
                           strokeLinecap="round"
                           strokeDasharray="125.6"
                           strokeDashoffset={125.6 * (1 - conversion.progress / 100)}
@@ -769,6 +770,16 @@ export default function ConverterPage() {
                         ? conversion.message
                         : `${conversion.progress}%`}
                   </p>
+                  {/* Fragment N/M display */}
+                  {conversion.message && (() => {
+                    const match = conversion.message.match(/第\s*(\d+)\s*\/\s*(\d+)\s*片段|片段\s*(\d+)\s*\/\s*(\d+)|chunk\s*(\d+)\s*\/\s*(\d+)/i)
+                    if (match) {
+                      const current = match[1] || match[3] || match[5]
+                      const total = match[2] || match[4] || match[6]
+                      return <p className="text-xs text-amber-400 font-medium mt-1">第 {current} / {total} 片段</p>
+                    }
+                    return null
+                  })()}
                 </>
               )}
 
@@ -896,6 +907,7 @@ export default function ConverterPage() {
                   <button
                     onClick={() => setConversion(null)}
                     className="btn-secondary text-sm w-full justify-center"
+                    aria-label="轉換另一本書"
                   >
                     Convert Another Book
                   </button>

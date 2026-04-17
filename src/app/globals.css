@@ -11,9 +11,9 @@
   --border: #27272a;
   --text: #fafafa;
   --text-muted: #a1a1aa;
-  --primary: #F5A623;
+  --primary: #F59E0B;
   --primary-hover: #D97706;
-  --secondary: #D4885C;
+  --secondary: #0D9488;
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
@@ -141,7 +141,7 @@ code, pre, .font-mono {
 
 /* Progress ring spinner */
 @keyframes progressRingSpin {
-  0% { stroke-dashoffset: 180; }
+  0% { stroke-dashoffset: 125.6; }
   100% { stroke-dashoffset: 0; }
 }
 
@@ -150,12 +150,9 @@ code, pre, .font-mono {
   to { transform: rotate(360deg); }
 }
 
-.animate-progress-ring {
+.progress-ring-spin {
   animation: progressRingRotate 1.2s linear infinite;
-}
-
-.animate-progress-ring-inner {
-  animation: progressRingSpin 1.2s ease-in-out infinite;
+  transform-origin: center;
 }
 
 .progress-bar {
