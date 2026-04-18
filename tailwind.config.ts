@@ -7,8 +7,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#8b5cf6",
-        primaryHover: "#7c3aed",
+        primary: "#F59E0B",
+        primaryHover: "#D97706",
       },
     },
   },

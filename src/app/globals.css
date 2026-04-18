@@ -5,12 +5,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --background: #09090b;
-  --surface: #18181b;
-  --surface-hover: #27272a;
-  --border: #27272a;
-  --text: #fafafa;
-  --text-muted: #a1a1aa;
+  --background: #FEFCE8;
+  --surface: #FFFFFF;
+  --surface-hover: #FEF9E7;
+  --border: #E7E5E4;
+  --text: #1C1917;
+  --text-muted: #78716C;
   --primary: #F59E0B;
   --primary-hover: #D97706;
   --secondary: #0D9488;
@@ -38,8 +38,8 @@ body {
 }
 
 ::selection {
-  background-color: rgba(124, 58, 237, 0.3);
-  color: #fafafa;
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #1C1917;
 }
 
 ::-webkit-scrollbar {
@@ -52,12 +52,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: #D6D3D1;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: #D6D3D1;
 }
 
 a {
@@ -75,19 +75,19 @@ code, pre, .font-mono {
   }
 
   .btn-secondary {
-    @apply px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-all duration-200 inline-flex items-center gap-2 border border-zinc-700;
+    @apply px-5 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg font-medium transition-all duration-200 inline-flex items-center gap-2 border border-stone-300;
   }
 
   .btn-ghost {
-    @apply px-5 py-2.5 hover:bg-zinc-800 text-zinc-300 rounded-lg font-medium transition-all duration-200 inline-flex items-center gap-2;
+    @apply px-5 py-2.5 hover:bg-stone-100 text-stone-600 rounded-lg font-medium transition-all duration-200 inline-flex items-center gap-2;
   }
 
   .input-field {
-    @apply w-full px-4 py-2.5 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all;
+    @apply w-full px-4 py-2.5 bg-zinc-900 border border-stone-300 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all;
   }
 
   .card {
-    @apply bg-zinc-900 border border-zinc-800 rounded-xl p-6;
+    @apply bg-white border border-amber-200 rounded-xl p-6;
   }
 
   .section-padding {
@@ -156,7 +156,7 @@ code, pre, .font-mono {
 }
 
 .progress-bar {
-  @apply h-2 bg-zinc-800 rounded-full overflow-hidden;
+  @apply h-2 bg-stone-200 rounded-full overflow-hidden;
 }
 
 .progress-bar-fill {
@@ -167,6 +167,6 @@ code, pre, .font-mono {
   @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
 }
 
-.badge-free { @apply bg-zinc-800 text-zinc-400 border border-zinc-700; }
-.badge-pro { @apply bg-amber-900/50 text-amber-300 border border-amber-700/50; }
-.badge-business { @apply bg-amber-900/50 text-amber-300 border border-amber-700/50; }
+.badge-free { @apply bg-zinc-800 text-zinc-400 border border-stone-300; }
+.badge-pro { @apply bg-amber-100 text-amber-700 border border-amber-300; }
+.badge-business { @apply bg-amber-100 text-amber-700 border border-amber-300; }
