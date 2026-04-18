@@ -239,14 +239,14 @@ export default function ConverterPage() {
   const engineLabel = TTS_ENGINES.find(e => e.id === ttsEngine)?.label || 'ElevenLabs'
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-amber-50">
       <Navbar />
       <div className="pt-24 pb-16 px-6">
         <div className="max-w-3xl mx-auto">
 
           {/* API Key Warning */}
           {apiKeyNeeded && (
-            <div className="mb-6 p-4 rounded-xl bg-amber-950/30 border border-amber-800/30 text-amber-300 text-sm flex items-start gap-3">
+            <div className="mb-6 p-4 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 text-sm flex items-start gap-3">
               <svg className="w-4 h-4 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                 <line x1="12" y1="9" x2="12" y2="13"/>
@@ -254,7 +254,7 @@ export default function ConverterPage() {
               </svg>
               <div>
                 <strong>API key required for Pro/Business</strong>
-                <p className="mt-1 text-amber-400/80">Add your ElevenLabs API key in{' '}
+                <p className="mt-1 text-amber-700">Add your ElevenLabs API key in{' '}
                   <Link href="/settings" className="underline">Settings</Link> to enable MP3 downloads.
                   Free tier uses browser TTS (preview only).
                 </p>
@@ -264,7 +264,7 @@ export default function ConverterPage() {
 
           <div className="mb-8">
             <h1 className="text-2xl font-bold mb-1">Converter</h1>
-            <p className="text-zinc-400 text-sm">Upload your ebook and convert to audiobook</p>
+            <p className="text-stone-500 text-sm">Upload your ebook and convert to audiobook</p>
           </div>
 
           {/* File Upload */}
@@ -283,7 +283,7 @@ export default function ConverterPage() {
                 setFormatError(''); setSizeError('')
                 fileInputRef.current?.click()
               }}
-              className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-amber-500 bg-amber-950/20' : 'border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/30'}`}
+              className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-amber-500 bg-amber-100' : 'border-amber-400 hover:border-amber-500 hover:bg-amber-50'}`}
             >
               <label htmlFor="ebook-file-input" className="cursor-pointer absolute inset-0" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }} />
               <input
@@ -304,11 +304,11 @@ export default function ConverterPage() {
                   </svg>
                   <div className="text-left">
                     <p className="font-medium animate-upload-success">{file.name}</p>
-                    <p className="text-sm text-zinc-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="text-sm text-stone-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setFile(null); setEstimatedChars(0) }}
-                    className="ml-4 text-zinc-500 hover:text-red-400 transition-colors"
+                    className="ml-4 text-stone-500 hover:text-red-600 transition-colors"
                     aria-label="移除檔案"
                     title="Remove file"
                   >
@@ -324,7 +324,7 @@ export default function ConverterPage() {
                     <polyline points="17 8 12 3 7 8"/>
                     <line x1="12" x2="12" y1="3" y2="15"/>
                   </svg>
-                  <p className="text-zinc-500 mb-1">Drop EPUB, PDF, or TXT here</p>
+                  <p className="text-stone-500 mb-1">Drop EPUB, PDF, or TXT here</p>
                   <p className="text-xs text-zinc-600">or click to browse</p>
                 </>
               )}
@@ -332,7 +332,7 @@ export default function ConverterPage() {
 
             {/* Format Error */}
             {formatError && (
-              <div className="mt-3 p-3 rounded-lg bg-red-950/30 border border-red-800/30 text-red-400 text-sm flex items-start gap-2">
+              <div className="mt-3 p-3 rounded-lg bg-red-950/30 border border-red-800/30 text-red-600 text-sm flex items-start gap-2">
                 <svg className="w-4 h-4 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10"/>
                   <line x1="15" y1="9" x2="9" y2="15"/>
@@ -344,7 +344,7 @@ export default function ConverterPage() {
 
             {/* Size Error */}
             {sizeError && (
-              <div className="mt-3 p-3 rounded-lg bg-red-950/30 border border-red-800/30 text-red-400 text-sm flex items-start gap-2">
+              <div className="mt-3 p-3 rounded-lg bg-red-950/30 border border-red-800/30 text-red-600 text-sm flex items-start gap-2">
                 <svg className="w-4 h-4 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10"/>
                   <line x1="12" y1="8" x2="12" y2="12"/>
@@ -358,23 +358,23 @@ export default function ConverterPage() {
             {file && estimatedChars > 0 && (
               <div className="mt-4 flex items-center justify-between text-sm">
                 <div>
-                  <span className="text-zinc-400">Estimated characters: </span>
-                  <span className={`font-medium ${willExceed ? 'text-red-400' : 'text-zinc-200'}`}>
+                  <span className="text-stone-500">Estimated characters: </span>
+                  <span className={`font-medium ${willExceed ? 'text-red-600' : 'text-stone-800'}`}>
                     {estimatedChars.toLocaleString()}
                   </span>
                   {willExceed && (
-                    <span className="ml-2 text-red-400 text-xs">
+                    <span className="ml-2 text-red-600 text-xs">
                       Exceeds remaining quota ({remainingChars.toLocaleString()} left)
                     </span>
                   )}
                 </div>
-                <div className="text-zinc-500 text-xs">
+                <div className="text-stone-500 text-xs">
                   {charactersUsed.toLocaleString()} / {planLimit.toLocaleString()} used this month
                 </div>
               </div>
             )}
             {file && estimatedChars > 0 && !willExceed && (
-              <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="mt-2 h-1.5 bg-stone-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-amber-500 rounded-full"
                   style={{ width: `${Math.min(100, (estimatedChars / planLimit) * 100)}%` }}
@@ -389,7 +389,7 @@ export default function ConverterPage() {
             <div className="grid md:grid-cols-3 gap-4">
               {/* Voice Gender */}
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Voice Gender</label>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">Voice Gender</label>
                 <div className="flex gap-2">
                   {VOICE_GENDER_OPTIONS.map((g) => (
                     <button
@@ -398,7 +398,7 @@ export default function ConverterPage() {
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${
                         voiceGender === g.id
                           ? 'bg-amber-500 border-amber-500 text-white'
-                          : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+                          : 'bg-stone-100 border-stone-300 text-stone-700 hover:border-stone-300'
                       }`}
                     >
                       {g.label}
@@ -409,7 +409,7 @@ export default function ConverterPage() {
 
               {/* TTS Engine */}
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">TTS Engine</label>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">TTS Engine</label>
                 <select
                   value={ttsEngine}
                   onChange={(e) => setTtsEngine(e.target.value)}
@@ -419,15 +419,15 @@ export default function ConverterPage() {
                     <option key={e.id} value={e.id}>{e.label}</option>
                   ))}
                 </select>
-                <p className="text-xs text-zinc-500 mt-1.5">
+                <p className="text-xs text-stone-500 mt-1.5">
                   {TTS_ENGINES.find(e => e.id === ttsEngine)?.desc}
                 </p>
               </div>
 
               {/* Speed Segmented Control */}
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Speed</label>
-                <div className="flex rounded-lg border border-zinc-700 overflow-hidden" role="group" aria-label="播放速度">
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">Speed</label>
+                <div className="flex rounded-lg border border-stone-300 overflow-hidden" role="group" aria-label="播放速度">
                   {[0.5, 1, 1.5, 2].map((speed) => (
                     <button
                       key={speed}
@@ -435,10 +435,10 @@ export default function ConverterPage() {
                       onClick={() => setRate(speed)}
                       aria-label={`播放速度 ${speed}x`}
                       aria-pressed={rate === speed}
-                      className={`flex-1 py-2 px-2 text-xs font-medium border-r last:border-r-0 border-zinc-700 transition-all ${
+                      className={`flex-1 py-2 px-2 text-xs font-medium border-r last:border-r-0 border-stone-300 transition-all ${
                         rate === speed
                           ? 'bg-amber-500 text-white border-amber-500'
-                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                          : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                       }`}
                     >
                       {speed}x
@@ -451,7 +451,7 @@ export default function ConverterPage() {
             {/* Voice Select */}
             <div className="grid md:grid-cols-2 gap-4 mt-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">AI Voice</label>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">AI Voice</label>
                 <select
                   value={voice}
                   onChange={(e) => setVoice(e.target.value)}
@@ -471,10 +471,10 @@ export default function ConverterPage() {
                   )}
                 </select>
                 {plan === 'free' && (
-                  <p className="text-xs text-zinc-500 mt-1.5">Free tier: browser TTS preview only</p>
+                  <p className="text-xs text-stone-500 mt-1.5">Free tier: browser TTS preview only</p>
                 )}
                 {plan !== 'free' && (
-                  <p className="text-xs text-zinc-500 mt-1.5">
+                  <p className="text-xs text-stone-500 mt-1.5">
                     {clonedVoices.some(v => v.elevenlabs_voice_id === voice)
                       ? 'Using your cloned voice'
                       : `${engineLabel} · ${genderLabel || 'Any gender'}`}
@@ -483,7 +483,7 @@ export default function ConverterPage() {
                 {plan !== 'free' && (
                   <button
                     onClick={() => setVoiceLabOpen(o => !o)}
-                    className="mt-2 text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                    className="mt-2 text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1"
                   >
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
@@ -497,8 +497,8 @@ export default function ConverterPage() {
             </div>
 
             {/* Preview — works for all tiers */}
-            <div className="mt-4 pt-4 border-t border-zinc-800">
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+            <div className="mt-4 pt-4 border-t border-stone-300">
+              <label className="block text-sm font-medium text-stone-700 mb-1.5">
                 Preview with selected voice (Browser TTS)
               </label>
               <div className="flex gap-2">
@@ -532,7 +532,7 @@ export default function ConverterPage() {
 
           {/* Voice Lab */}
           {voiceLabOpen && plan !== 'free' && (
-            <div className="card mb-6 border-amber-800/30">
+            <div className="card mb-6 border-amber-300">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold flex items-center gap-2">
                   <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -542,24 +542,24 @@ export default function ConverterPage() {
                   </svg>
                   Voice Lab — Create Your Clone
                 </h2>
-                <button onClick={() => setVoiceLabOpen(false)} className="text-zinc-500 hover:text-zinc-300">
+                <button onClick={() => setVoiceLabOpen(false)} className="text-stone-500 hover:text-stone-700">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
                 </button>
               </div>
 
-              <p className="text-sm text-zinc-400 mb-4">
+              <p className="text-sm text-stone-500 mb-4">
                 Upload an audio sample (30s–5min) to clone your voice. Works best with clear, single-speaker audio.
               </p>
 
               {/* Clone Form */}
               <div className="space-y-3 mb-4">
                 <div>
-                  <label htmlFor="audio-sample-input" className="block text-xs font-medium text-zinc-300 mb-1">Audio Sample</label>
+                  <label htmlFor="audio-sample-input" className="block text-xs font-medium text-stone-700 mb-1">Audio Sample</label>
                   <div
                     onClick={() => audioInputRef.current?.click()}
-                    className={`border border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${cloneAudio ? 'border-amber-500 bg-amber-950/20' : 'border-zinc-700 hover:border-zinc-600'}`}
+                    className={`border border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${cloneAudio ? 'border-amber-500 bg-amber-950/20' : 'border-stone-300 hover:border-stone-300'}`}
                   >
                     <label htmlFor="audio-sample-input" className="absolute inset-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); audioInputRef.current?.click() }}>
                     <input
@@ -580,16 +580,16 @@ export default function ConverterPage() {
                         <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
                         </svg>
-                        <span className="text-sm text-zinc-300">{cloneAudio.name}</span>
-                        <span className="text-xs text-zinc-500">({(cloneAudio.size / 1024 / 1024).toFixed(2)} MB)</span>
+                        <span className="text-sm text-stone-700">{cloneAudio.name}</span>
+                        <span className="text-xs text-stone-500">({(cloneAudio.size / 1024 / 1024).toFixed(2)} MB)</span>
                       </div>
                     ) : (
-                      <p className="text-sm text-zinc-500">Click to upload · MP3, WAV, M4A</p>
+                      <p className="text-sm text-stone-500">Click to upload · MP3, WAV, M4A</p>
                     )}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">Voice Name</label>
+                  <label className="block text-xs font-medium text-stone-700 mb-1">Voice Name</label>
                   <input
                     type="text"
                     value={cloneName}
@@ -631,22 +631,22 @@ export default function ConverterPage() {
                     </span>
                   ) : 'Clone My Voice'}
                 </button>
-                {cloneError && <p className="text-xs text-red-400">{cloneError}</p>}
+                {cloneError && <p className="text-xs text-red-600">{cloneError}</p>}
                 {cloneSuccess && <p className="text-xs text-green-400">{cloneSuccess}</p>}
               </div>
 
               {/* Cloned Voices List */}
               {clonedVoices.length > 0 && (
-                <div className="border-t border-zinc-800 pt-4">
-                  <p className="text-xs font-medium text-zinc-400 mb-3">My Cloned Voices ({clonedVoices.length})</p>
+                <div className="border-t border-stone-300 pt-4">
+                  <p className="text-xs font-medium text-stone-500 mb-3">My Cloned Voices ({clonedVoices.length})</p>
                   <div className="space-y-2">
                     {clonedVoices.map((v) => (
-                      <div key={v.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50">
+                      <div key={v.id} className="flex items-center justify-between p-3 rounded-lg bg-stone-100">
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-xs text-zinc-500 font-mono">CLONE</span>
+                          <span className="text-xs text-stone-500 font-mono">CLONE</span>
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{v.name}</p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-xs text-stone-500">
                               {new Date(v.created_at).toLocaleDateString()}
                               {v.audio_sample_url && (
                                 <a href={v.audio_sample_url} target="_blank" rel="noreferrer" className="ml-2 text-amber-400 hover:underline" aria-label={`播放${v.name}範例`}>Play sample</a>
@@ -663,7 +663,7 @@ export default function ConverterPage() {
                               if (voice === v.elevenlabs_voice_id) setVoice('eleven_multilingual_v2')
                             } catch { alert('Delete failed') }
                           }}
-                          className="text-zinc-500 hover:text-red-400 ml-2 flex-shrink-0"
+                          className="text-stone-500 hover:text-red-600 ml-2 flex-shrink-0"
                           title="Delete voice"
                           aria-label={`刪除語音克隆${v.name}`}
                         >
@@ -681,7 +681,7 @@ export default function ConverterPage() {
 
           {/* Error */}
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-950/30 border border-red-800/30 text-red-400 text-sm">
+            <div className="mb-6 p-4 rounded-xl bg-red-950/30 border border-red-800/30 text-red-600 text-sm">
               {error}
             </div>
           )}
@@ -724,7 +724,7 @@ export default function ConverterPage() {
                 <span className={`badge ${
                   conversion.status === 'completed' ? 'badge-pro' :
                   conversion.status === 'failed' ? 'bg-red-900/50 text-red-300 border border-red-700/50' :
-                  'bg-blue-900/50 text-blue-300 border border-blue-700/50'
+                  'bg-blue-100 text-blue-700 border border-blue-200'
                 }`}>
                   {conversion.status}
                 </span>
@@ -736,7 +736,7 @@ export default function ConverterPage() {
                   <div className="flex items-center gap-4 mb-3">
                     <div className="relative w-12 h-12 flex-shrink-0">
                       <svg className="w-12 h-12 progress-ring-spin" viewBox="0 0 48 48">
-                        <circle cx="24" cy="24" r="20" fill="none" stroke="#27272a" strokeWidth="4"/>
+                        <circle cx="24" cy="24" r="20" fill="none" stroke="#E7E5E4" strokeWidth="4"/>
                         <circle
                           cx="24" cy="24" r="20" fill="none"
                           stroke="#F59E0B" strokeWidth="4"
@@ -746,7 +746,7 @@ export default function ConverterPage() {
                           className="transition-all duration-500 ease-out"
                         />
                       </svg>
-                      <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-zinc-300">
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-stone-700">
                         {conversion.progress}%
                       </span>
                     </div>
@@ -763,7 +763,7 @@ export default function ConverterPage() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm text-zinc-400">
+                  <p className="text-sm text-stone-600">
                     {conversion.message?.includes('片段')
                       ? conversion.message
                       : conversion.message?.includes('章節') || conversion.message?.includes('Chapter')
@@ -776,7 +776,7 @@ export default function ConverterPage() {
                     if (match) {
                       const current = match[1] || match[3] || match[5]
                       const total = match[2] || match[4] || match[6]
-                      return <p className="text-xs text-amber-400 font-medium mt-1">第 {current} / {total} 片段</p>
+                      return <p className="text-xs text-amber-600 font-medium mt-1">第 {current} / {total} 片段</p>
                     }
                     return null
                   })()}
@@ -785,7 +785,7 @@ export default function ConverterPage() {
 
               {conversion.status === 'failed' && (
                 <div>
-                  <p className="text-sm text-red-400 mb-3">
+                  <p className="text-sm text-red-600 mb-3">
                     {conversion.error || 'Conversion failed. Please try again.'}
                   </p>
                   <button
@@ -801,16 +801,16 @@ export default function ConverterPage() {
                 <div className="space-y-5">
                   {/* Summary */}
                   <div className="flex gap-4">
-                    <div className="flex-1 p-3 rounded-lg bg-zinc-800/50">
-                      <p className="text-xs text-zinc-500">Title</p>
+                    <div className="flex-1 p-3 rounded-lg bg-stone-100">
+                      <p className="text-xs text-stone-500">Title</p>
                       <p className="font-medium text-sm">{conversion.title}</p>
                     </div>
-                    <div className="flex-1 p-3 rounded-lg bg-zinc-800/50">
-                      <p className="text-xs text-zinc-500">Characters</p>
+                    <div className="flex-1 p-3 rounded-lg bg-stone-100">
+                      <p className="text-xs text-stone-500">Characters</p>
                       <p className="font-medium text-sm">{conversion.character_count?.toLocaleString()}</p>
                     </div>
-                    <div className="flex-1 p-3 rounded-lg bg-zinc-800/50">
-                      <p className="text-xs text-zinc-500">Chapters</p>
+                    <div className="flex-1 p-3 rounded-lg bg-stone-100">
+                      <p className="text-xs text-stone-500">Chapters</p>
                       <p className="font-medium text-sm">{conversion.chapter_count}</p>
                     </div>
                   </div>
@@ -839,7 +839,7 @@ export default function ConverterPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 rounded-lg bg-amber-950/20 border border-amber-800/30">
+                    <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
                       <div className="flex items-start gap-3">
                         <svg className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <circle cx="12" cy="12" r="10"/>
@@ -847,19 +847,19 @@ export default function ConverterPage() {
                           <line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
                         <div>
-                          <p className="text-amber-300 font-medium text-sm">No audio generated</p>
-                          <p className="text-amber-400/70 text-xs mt-1">
+                          <p className="text-amber-700 font-medium text-sm">No audio generated</p>
+                          <p className="text-amber-600 text-xs mt-1">
                             {plan === 'free'
                               ? 'Free tier records conversions but does not generate audio. Upgrade to Pro/Business and add your ElevenLabs API key to get MP3 downloads.'
                               : 'Add your ElevenLabs API key in Settings to enable audio generation.'}
                           </p>
                           {plan === 'free' && (
-                            <Link href="/pricing" className="inline-flex items-center gap-1 mt-2 text-xs text-amber-400 hover:text-amber-300">
+                            <Link href="/pricing" className="inline-flex items-center gap-1 mt-2 text-xs text-amber-600 hover:text-amber-700">
                               View plans →
                             </Link>
                           )}
                           {plan !== 'free' && (
-                            <Link href="/settings" className="inline-flex items-center gap-1 mt-2 text-xs text-amber-400 hover:text-amber-300">
+                            <Link href="/settings" className="inline-flex items-center gap-1 mt-2 text-xs text-amber-600 hover:text-amber-700">
                               Add API key in Settings →
                             </Link>
                           )}
@@ -876,7 +876,7 @@ export default function ConverterPage() {
                       </p>
                       <div className="space-y-2">
                         {conversion.chapter_audios.map((ch) => (
-                          <div key={ch.index} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50">
+                          <div key={ch.index} className="flex items-center justify-between p-3 rounded-lg bg-stone-100">
                             <div className="flex items-center gap-3 min-w-0">
                               <span className="text-xs text-zinc-600 font-mono w-6 flex-shrink-0">{ch.index}</span>
                               <span className="text-sm truncate">{ch.title}</span>
