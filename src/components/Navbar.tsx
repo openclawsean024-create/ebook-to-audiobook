@@ -2,11 +2,23 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function Navbar() {
   const router = useRouter()
   const supabase = createClient()
+  const [user, setUser] = useState<{ id?: string; email?: string } | null>(null)
+
+  useEffect(() => {
+    const { data: { user } } = supabase.auth.getUser()
+    setUser(user)
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -32,18 +44,34 @@ export default function Navbar() {
           <Link href="/pricing" className="btn-ghost text-sm">
             Pricing
           </Link>
-          <Link href="/converter" className="btn-ghost text-sm">
-            Converter
-          </Link>
-          <Link href="/dashboard" className="btn-ghost text-sm">
-            Dashboard
-          </Link>
-          <button onClick={handleLogout} className="btn-ghost text-sm text-zinc-500 hover:text-zinc-300">
-            Logout
-          </button>
-          <Link href="/converter" className="btn-primary text-sm ml-2">
-            Start Converting
-          </Link>
+          {user ? (
+            <>
+              <Link href="/converter" className="btn-ghost text-sm">
+                Converter
+              </Link>
+              <Link href="/dashboard" className="btn-ghost text-sm">
+                Dashboard
+              </Link>
+              <button onClick={handleLogout} className="btn-ghost text-sm text-zinc-500 hover:text-zinc-300">
+                Logout
+              </button>
+              <Link href="/converter" className="btn-primary text-sm ml-2">
+                Start Converting
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="btn-ghost text-sm">
+                Sign In
+              </Link>
+              <Link href="/register" className="btn-ghost text-sm">
+                Register
+              </Link>
+              <Link href="/converter" className="btn-primary text-sm ml-2">
+                Start Converting
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>
