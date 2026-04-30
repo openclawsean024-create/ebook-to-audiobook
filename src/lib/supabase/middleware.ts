@@ -7,6 +7,17 @@ export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 
+  // Protected routes require authentication
+  const protectedPaths = ['/dashboard', '/converter', '/settings']
+  const isProtected = protectedPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  )
+
+  // Auth pages redirect to dashboard if already logged in
+  const isAuthPage = ['/login', '/register'].some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  )
+
   // If Supabase is not configured (placeholder or empty), skip auth checks entirely
   const isPlaceholderUrl = !supabaseUrl ||
     supabaseUrl.includes('placeholder') ||
@@ -41,7 +52,13 @@ export async function updateSession(request: NextRequest) {
       }
     )
   } catch {
-    // Failed to create Supabase client — allow request through
+    // Failed to create Supabase client — if route is protected, block it; otherwise allow
+    if (isProtected) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('redirect', request.nextUrl.pathname)
+      return NextResponse.redirect(url)
+    }
     return supabaseResponse
   }
 
@@ -59,15 +76,6 @@ export async function updateSession(request: NextRequest) {
     }
     return supabaseResponse
   }
-
-  // Protect dashboard routes
-  const protectedPaths = ['/dashboard', '/converter', '/settings']
-  const isProtected = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  )
-  const isAuthPage = ['/login', '/register'].some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  )
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone()
