@@ -50,7 +50,13 @@ export async function updateSession(request: NextRequest) {
     const { data } = await supabase.auth.getUser()
     user = data?.user ?? null
   } catch {
-    // Supabase unreachable — allow request through
+    // Supabase unreachable — block protected routes, allow others
+    if (isProtected) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('redirect', request.nextUrl.pathname)
+      return NextResponse.redirect(url)
+    }
     return supabaseResponse
   }
 
