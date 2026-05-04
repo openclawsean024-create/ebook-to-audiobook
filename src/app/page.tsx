@@ -15,15 +15,15 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 animate-fade-in animate-fade-in-delay-1">
-            Turn any ebook into an{' '}
+            Turn any ebook into a{' '}
             <span className="bg-gradient-to-r from-violet-400 to-violet-600 bg-clip-text text-transparent">
-              audiobook
+              20-minute audiobook
             </span>
           </h1>
 
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-10 animate-fade-in animate-fade-in-delay-2">
-            Upload EPUB, PDF, or TXT. Get a chapter-segmented MP3 with AI voices.
-            No account needed to try — bring your own ElevenLabs key for MP3 export.
+            Upload EPUB, PDF, or TXT. Claude AI condenses your book to a ~3,000-word summary,
+            then generates a 20-minute MP3 with professional AI voices. No account needed to try.
           </p>
 
           <div className="flex items-center justify-center gap-4 animate-fade-in animate-fade-in-delay-3">
@@ -65,16 +65,20 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="w-48 space-y-3">
-                  <div className="text-xs text-zinc-500 uppercase tracking-wider">Progress</div>
+                  <div className="text-xs text-zinc-500 uppercase tracking-wider">Pipeline</div>
                   <div className="space-y-2">
-                    {[60, 85, 100].map((p) => (
-                      <div key={p}>
+                    {[
+                      { label: '上傳檔案', p: 100 },
+                      { label: 'AI 智能摘要', p: 100 },
+                      { label: '生成語音', p: 75 },
+                    ].map((s) => (
+                      <div key={s.label}>
                         <div className="flex justify-between text-xs text-zinc-400 mb-1">
-                          <span>Chapter {p === 60 ? 1 : p === 85 ? 2 : 3}</span>
-                          <span>{p}%</span>
+                          <span>{s.label}</span>
+                          <span>{s.p}%</span>
                         </div>
                         <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-violet-600 rounded-full" style={{ width: `${p}%` }}></div>
+                          <div className="h-full bg-violet-600 rounded-full" style={{ width: `${s.p}%` }}></div>
                         </div>
                       </div>
                     ))}
@@ -108,13 +112,12 @@ export default function HomePage() {
               {
                 icon: (
                   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M9 18V5l12-2v13"/>
-                    <circle cx="6" cy="18" r="3"/>
-                    <circle cx="18" cy="16" r="3"/>
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v4l3 3"/>
                   </svg>
                 ),
-                title: 'Chapter-segmented audio',
-                desc: 'Not one giant file. Get individual chapter MP3s + a merged full audiobook.',
+                title: 'AI Smart Summary',
+                desc: 'Claude AI distills your ebook to the core ideas in ~3,000 words — perfectly paced for a 20-minute listen.',
               },
               {
                 icon: (
@@ -144,9 +147,10 @@ export default function HomePage() {
       <section className="px-6 pb-32">
         <div className="max-w-5xl mx-auto">
           <div className="rounded-2xl bg-gradient-to-r from-violet-950/50 to-zinc-900 border border-violet-800/30 p-12 text-center">
-            <h2 className="text-3xl font-bold mb-4">Ready to listen to your books?</h2>
+            <h2 className="text-3xl font-bold mb-4">Ready to listen to your books in 20 minutes?</h2>
             <p className="text-zinc-400 mb-8 max-w-lg mx-auto">
               Free tier lets you try with browser TTS. No credit card, no API key needed.
+              Upgrade for high-quality MP3 downloads.
             </p>
             <Link href="/register" className="btn-primary px-8 py-3 text-base">
               Get Started Free
