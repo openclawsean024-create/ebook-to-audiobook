@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  serverExternalPackages: ['adm-zip', 'pdfjs-dist'],
+  serverExternalPackages: ['adm-zip', 'pdfjs-dist', '@anthropic-ai/sdk'],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Don't bundle server-only packages on the client
