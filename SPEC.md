@@ -1,226 +1,120 @@
-# 電子書轉有聲書 — 產品規格書 v4 (Final)
+# 電子書轉有聲書 — 規格計劃書 v1.0
 
-> **版本**：v4.0  
-> **更新日期**：2026-04-04  
-> **狀態**：✅ READY FOR IMPLEMENTATION  
-> **Sean 原始反饋**：「我把電子書拖進上傳區的時候，都沒有辦法正常地上傳，這應該如何解決？」  
-> **前版狀態**：v3（ebook-to-audiobook-final.md）
+> 版本：v1.0｜更新日期：2026-07-11｜維護者：Sophia (CPO)
+> 對接技術：Alan (CTO)
 
 ---
 
-## 一、願景與產品定位
+## 1. 問題陳述
 
-**一句話價值主張**：將 EPUB / PDF 電子書拖入頁面，自動轉換為有聲書，隨時隨地聆聽。
+### 1.1 目標使用者
 
-**目標受眾**：通勤族、視障/閱讀障礙者、數位閱讀愛好者
+| 族群 | 規模 | 痛點 |
+|---|---|---|
+| 通勤族 | ~300 萬 | 想用通勤時間「聽」書，但有聲書平台需訂閱 |
+| 視障者 | ~6 萬 | 電子書無法閱讀、需要語音版本 |
+| 內容創作者 | ~10 萬 | 想把電子書變有聲書販售 |
+| 出版社 / 個人作者 | ~2,000 | 想快速將電子書轉有聲書上架 |
 
----
+### 1.2 為什麼不做替代方案
 
-## 二、Sean's Feedback — 上傳問題修復區 🔧
-
-> 「我把電子書拖進上傳區的時候，都沒有辦法正常地上傳，這應該如何解決？」
-
-### 2.1 問題根本原因分析
-
-上傳失敗可能來自以下幾個環節：
-
-| 環節 | 可能原因 | 解決方案 |
-|------|----------|----------|
-| **前端上傳元件** | 拖放事件未正確監聽、阻止了預設行為 | 檢查 `onDrop` / `onDragOver` 是否正確綁定；加入 `e.preventDefault()` |
-| **檔案大小限制** | 前端或後端設定了 50MB 限制但未提示用戶 | 加入檔案大小預檢，超過時顯示友好提示 |
-| **檔案格式驗證** | EPUB/PDF/MOBI 副檔名未完整覆蓋 | 擴展 MIME type 白名單 |
-| **CORS 問題** | 跨域上傳至 API 失敗 | 確認 Vercel Blob 或 API Route 允許跨域 |
-| **網路連線** | 上傳過程中斷 | 加入上傳進度條 + 斷點續傳機制 |
-| **瀏覽器相容性** | 特定瀏覽器不支援 File API | 加入 feature detection，針對 Safari/Firefox 特殊處理 |
-| **後端檔案處理** | `jszip` 解壓 EPUB 或 `pdf-parse` 失敗時無錯誤回傳 | 加入 try-catch + 結構化錯誤訊息 |
-
-### 2.2 Alan 的 Debug Checklist（上傳失敗必檢）
-
-```javascript
-// 1. 確認拖放事件監聽
-const dropZone = document.getElementById('drop-zone');
-dropZone.addEventListener('dragover', (e) => {
-  e.preventDefault();  // 必須！否則瀏覽器會當作連結開啟
-  e.stopPropagation();
-});
-dropZone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  const files = [...e.dataTransfer.files];
-  handleFiles(files);
-});
-
-// 2. 檔案格式白名單（MIME types）
-const ALLOWED_TYPES = [
-  'application/epub+zip',        // EPUB
-  'application/pdf',             // PDF
-  'text/plain',                  // TXT
-  'application/x-mobipocket-ebook', // MOBI
-  'application/octet-stream',   // 某些系統輸出的 EPUB
-];
-const MAX_SIZE = 50 * 1024 * 1024; // 50MB
-
-function validateFile(file) {
-  if (!ALLOWED_TYPES.includes(file.type) && !file.name.match(/\.(epub|pdf|txt|mobi)$/i)) {
-    throw new Error('UNSUPPORTED_FORMAT');
-  }
-  if (file.size > MAX_SIZE) {
-    throw new Error('FILE_TOO_LARGE');
-  }
-  return true;
-}
-
-// 3. 前端上傳 API 呼叫
-async function uploadFile(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const response = await fetch('/api/book/upload', {
-    method: 'POST',
-    body: formData,
-    // 不要設 Content-Type，讓瀏覽器自動設定 boundary
-  });
-  
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.code || 'UPLOAD_FAILED');
-  }
-  
-  return response.json();
-}
-```
-
-### 2.3 後端上傳處理（API Route）
-
-```javascript
-// pages/api/book/upload.js
-export const config = {
-  api: {
-    bodyParser: false,  // 必須！否則無法處理 FormData
-  },
-};
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ code: 'METHOD_NOT_ALLOWED' });
-  }
-
-  try {
-    const data = await parseFormData(req);
-    const file = data.get('file');
-    
-    if (!file) {
-      return res.status(400).json({ code: 'NO_FILE', message: '未檢測到檔案' });
-    }
-
-    // 格式驗證
-    const allowedExtensions = ['.epub', '.pdf', '.txt', '.mobi'];
-    const ext = '.' + file.name.split('.').pop().toLowerCase();
-    if (!allowedExtensions.includes(ext)) {
-      return res.status(400).json({ 
-        code: 'UNSUPPORTED_FORMAT',
-        message: `不支援的格式，目前支援：${allowedExtensions.join(', ')}`
-      });
-    }
-
-    // 大小驗證
-    const MAX_SIZE = 50 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      return res.status(400).json({ 
-        code: 'FILE_TOO_LARGE',
-        message: '檔案大小超過 50MB 限制'
-      });
-    }
-
-    // 上傳到 Vercel Blob
-    const { put } = await import('@vercel/blob');
-    const blob = await put(`books/${Date.now()}-${file.name}`, file, {
-      access: 'public',
-    });
-
-    return res.status(200).json({ 
-      bookId: blob.url, 
-      status: 'uploaded',
-      fileUrl: blob.url 
-    });
-
-  } catch (error) {
-    console.error('Upload error:', error);
-    return res.status(500).json({ 
-      code: 'UPLOAD_ERROR',
-      message: error.message 
-    });
-  }
-}
-```
-
-### 2.4 常見錯誤代碼與用戶訊息
-
-| 錯誤代碼 | 翻譯 | 顯示給用戶的訊息 |
-|----------|------|-----------------|
-| `NO_FILE` | 未上傳檔案 | 請選擇要上傳的電子書檔案 |
-| `UNSUPPORTED_FORMAT` | 格式不支援 | 抱歉，目前不支援這個檔案格式，請上傳 EPUB、PDF 或 TXT |
-| `FILE_TOO_LARGE` | 檔案太大 | 檔案大小不能超過 50MB |
-| `UPLOAD_FAILED` | 上傳失敗 | 上傳失敗，請稍後重試 |
-| `API_RATE_LIMITED` | 流量限制 | 伺服器忙碌中，請 30 秒後重試 |
-| `PARSE_ERROR` | 檔案解析失敗 | 無法讀取這個檔案的內容，請確認檔案未加密或損壞 |
-
-### 2.5 友善的上傳失敗 UI
-
-```
-┌─────────────────────────────────────┐
-│  📚 將電子書變成有聲書                │
-│                                     │
-│  ┌─────────────────────────────┐   │
-│  │  ⚠️ 上傳失敗                  │   │
-│  │                             │   │
-│  │  錯誤：FILE_TOO_LARGE        │   │
-│  │  檔案大小不能超過 50MB       │   │
-│  │                             │   │
-│  │  [重新選擇檔案]              │   │
-│  └─────────────────────────────┘   │
-│                                     │
-│  支援：EPUB, PDF, TXT（最大 50MB）  │
-└─────────────────────────────────────┘
-```
+- **有聲書平台（Audible / 讀墨有聲）**：月費 600-1,200 NT$，且僅限平台內容
+- **商用 TTS + 後製**：每次 1,000-5,000 NT$，耗時
+- **自己用 TTS 軟體**：品質差、無章節分段
+- **我們的解法**：EPUB 上傳 → 自動章節分段 → 高品質 TTS（Edge TTS）+ 章節 MP3 + 完整有聲書 ZIP，純前端
 
 ---
 
-## 三、其餘功能規格（摘要）
+## 2. 解決方案
 
-> 其餘功能規格詳見 v3（ebook-to-audiobook-final.md），本版本僅新增上傳問題修復區。
+### 2.1 核心價值主張
 
-### 三、A. 用戶流程（摘要）
-```
-上傳書籍 → 格式偵測 → 解析內容 → 選擇朗讀設定 → 開始轉換 → 完成通知 → 線上聆聽/下載
-```
+> 「上傳 EPUB，30 分鐘拿到完整有聲書 ZIP，章節自動分段。」
 
-### 三、B. 技術棧（摘要）
-- 前端：Next.js 14 + Tailwind CSS + epub.js / pdf.js
-- 後端：Node.js API Routes + Edge TTS / ElevenLabs
-- 儲存：Vercel Blob + Supabase
-- 認證：Clerk
+### 2.2 使用者流程
 
-### 三、C. 優先順序（修復為最高優先）
-1. 🔴 **P0**：上傳失敗問題修復（本次更新核心）
-2. P1：PDF 解析增強
-3. P2：離線播放（PWA）
-4. P3：批量轉換
+1. 上傳 EPUB 檔案（支援 DRM-free）
+2. 系統解析章節結構（書名/章節/段落）
+3. 選擇聲音 + 語速
+4. 逐章生成 MP3
+5. 下載完整 ZIP（含所有章節 + 總長度統計）
 
 ---
 
-## 四、Alan 驗收標準
+## 3. 功能清單
 
-- [ ] 拖放 EPUB 檔案後，正確觸發上傳（網路請求發出）
-- [ ] 上傳失敗時，顯示具體錯誤代碼與友善訊息（非空白畫面）
-- [ ] 檔案大小超過 50MB 時，預先阻擋不上傳
-- [ ] 副檔名為 `.epub` 但 MIME type 是 `application/octet-stream` 的檔案也能上傳
-- [ ] 上傳進度條正確顯示
-- [ ] 失敗後重試按鈕可正常運作
+### 3.1 MVP（必做）
+
+- [ ] EPUB 上傳 + 解析
+- [ ] 章節結構自動辨識
+- [ ] 章節逐段 TTS 轉換（Edge TTS）
+- [ ] 5 種聲音（中/英/日/韓/粵）
+- [ ] 語速調整（0.5x - 2.0x）
+- [ ] 章節 MP3 命名規範
+- [ ] 完整 ZIP 下載
+- [ ] 總長度/章節數統計
+
+### 3.2 v2（加值）
+
+- [ ] ElevenLabs 高品質備援
+- [ ] 背景音樂混入
+- [ ] 朗讀停頓優化
+- [ ] 多語系翻譯（書本翻譯 + TTS）
+
+### 3.3 明確不做
+
+- DRM 解鎖（不做版權規避）
+- 出版社商用授權（使用者自負責任）
+- 真人配音市場（純 TTS 工具）
+- 與有聲書平台整合
 
 ---
 
-*規格書版本：v4*
-*更新時間：2026-04-04*
-*更新內容：上傳失敗問題修復（Alan implementation checklist）*
-*負責人：Sophia（CEO/產品負責人）*
+## 4. 技術棧
+
+| 層 | 選擇 | 理由 |
+|---|---|---|
+| 前端 | Next.js 14 + TypeScript | SSR 友善 |
+| EPUB 解析 | epub.js + JSZip | 業界標準 |
+| TTS | Edge TTS（Python 套件 via API route） | 免費高品質 |
+| 音訊處理 | lamejs / ffmpeg.wasm | MP3 編碼 |
+| ZIP | JSZip | 純前端 |
+| 部署 | Vercel |
+
+---
+
+## 5. 完成標準（Definition of Done）
+
+- [ ] Vercel production URL（https://ebook-to-audiobook-seans-projects-7dc76219.vercel.app）200 OK
+- [ ] GitHub Repo 公開（https://github.com/openclawsean024-create/ebook-to-audiobook）
+- [ ] EPUB 解析正確（測 5 本樣本）
+- [ ] 章節分段正確（依 EPUB TOC）
+- [ ] 5 種聲音可選
+- [ ] ZIP 下載可解壓、章節順序正確
+- [ ] 總長度統計正確
+
+---
+
+## 6. 風險與決策
+
+| 風險 | 等級 | 緩解 |
+|---|---|---|
+| 版權爭議（轉換他人書籍） | 🟠 中 | 明確聲明「僅限 DRM-free / 個人使用」 |
+| EPUB 格式差異 | 🟠 中 | 多解析器 fallback + 使用者可手動校正章節 |
+| TTS 轉換耗時 | 🟡 低 | 背景任務 + 進度條 |
+| MP3 容量大（長書） | 🟡 低 | 分割章節各自獨立 + 串流播放 |
+
+---
+
+## 7. 變現路徑
+
+| 方案 | 價格 | 功能 |
+|---|---|---|
+| 免費版 | NT$0 | 5 本/月 + Edge TTS + 章節 MP3 |
+| 個人版 | NT$99/月 | 20 本/月 + 多聲音 + 長書支援 |
+| 創作者版 | NT$499/月 | 個人版 + 商用授權 + ElevenLabs 高品質 |
+| 出版版 | NT$2,999/月 | 創作者版 + 大量轉換 + API + 客服優先 |
+
+---
+
+*本規格書版本：v1.0 — 2026-07-11*
