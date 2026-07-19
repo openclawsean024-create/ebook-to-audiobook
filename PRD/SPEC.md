@@ -1,23 +1,35 @@
-# Ebook to Audiobook — 規格書 v2.2.2
+# Ebook to Audiobook — 規格書 v3.0
 
-> **專案**：Ebook to Audiobook（個人 EPUB 轉中文有聲書 + Podcast RSS）
-> **PRD 版本**：v2.2.2（sweet-spot rewrite, 從 Speechify 60M users 紅海 pivot 到繁體中文 EPUB 個人 podcast niche）
+> **專案**：Ebook to Audiobook（EPUB/PDF → 多角色 TTS audiobook + Podcast RSS）
+> **PRD 版本**：v3.0（forced upgrade；Sweet Spot 5 問重評）
 > **撰寫日期**：2026-07-19
+> **Git branch**：`master`
 > **作者**：Sean（PRD specialist 批次 B 重寫）
 > **SSOT 位置**：`/home/sean/Program/ebook-to-audiobook/PRD/SPEC.md`
 > **本地路徑**：`/home/sean/Program/ebook-to-audiobook`
 
 ---
 
-## 0. 改版摘要 (What's new in v2.2.2)
+## 0. v3.0 改版摘要 (What's new)
 
-| v2.2.1 → v2.2.2 差異 | 為何改 | 對誰重要 |
+本版依「電子書轉有聲書（EPUB/PDF → 多角色 TTS audiobook）」重新做 Sweet Spot 5 問，不把全球 TTS 紅海的規模敘事當成市場驗證。產品的 beachhead 仍是繁體中文個人電子書，但輸入由 EPUB 擴至可抽取文字的 PDF，並把「多角色」從未明確的聲音選擇升級為可驗收的角色／聲音 mapping。
+
+| v2.2.2 → v3.0 差異 | 為何改 | 對誰重要 |
 |---|---|---|
-| Sweet spot 從「全球 TTS audiobook」紅海（sweet=2）pivot 到 **「繁體中文 EPUB 個人 podcast」** | Speechify 60M users、ElevenLabs 估值 $6B、Apple Books 已內建 TTS，紅海驗證失敗 | 真正可贏的小眾 |
-| Persona 從「所有想聽書的人」縮為「25-50 歲繁中讀者，已有 EPUB 書庫（含自己出版/電子書），想通勤/運動時聽自己的書並訂閱追蹤作者」 | Speechify/念華書都沒有繁中 EPUB podcast workflow | 縮小後 persona 明確 |
-| 核心功能從「EPUB → MP3」變成 **「EPUB → 多章節 MP3 + Podcast RSS feed + 訂閱追蹤 + 個人書房」** | podcast RSS 是 Spotify/Apple Podcasts 直接訂閱的 virality 引擎 | MVP 2 個月可交付 |
-| 定價 pivot：從 NT$99 單次變成 **「免費 1 本/月 30 章 + NT$149/月 5 本 + NT$399/月 無限 + NT$499 終身 50 本額度」** | Speechify NT$150/月，繁中 EPUB 用戶付費意願 NT$100-500/月 | 付費意願對得上 |
-| 驗證從「1000 users」改為「30 天內 5 個繁中 EPUB 用戶付費 + 8 個 podcast RSS 訂閱數成長」 | 更小、更可反駁 | 兩週可驗證 |
+| 版本與決策日期強制升級為 **v3.0 / 2026-07-19**，branch 固定 `master` | 讓規格、驗證、提交與遠端狀態可追溯 | 維護者與實作者 |
+| 入口由「EPUB only」改為 **EPUB/PDF → audiobook** | 視障使用者與自作者常持有 PDF；但 PDF 先限文字型，掃描檔需 OCR | 自作者、有聲書創作者、視障 |
+| 核心 wedge 由單一聲音擴為 **多角色 TTS** | 小說對話需要角色一致性；MVP 先做角色表、聲音 mapping、章節內一致 | 有聲書創作者與重度讀者 |
+| Sweet Spot 改採 1–10 量表逐題評分；本版 sweet = **7.8/10** | 把「已知證據」與「待驗證假設」分開，不再使用混合公式 | 決策者 |
+| 商業化採指定公式 **30 + sweet×7 = 84.6/100** | 依任務要求如實計算，不取保守、不把它誤寫成實收營收 | 商業化與 pilot 決策 |
+| 新增 §15.11 v3.0 量表、§15.12 五項 ADR、§15.13 五項市場驗證 | 讓分數能被重算、架構能被追責、兩週內能產生反駁證據 | 一人公司執行 |
+
+### v3.0 行動建議（先驗證，再擴功能）
+
+1. **48 小時內**：用 3 份自有／獲授權的 EPUB 與 2 份文字型 PDF 做解析 spike；確認章節、對話、頁首頁尾、表格與 Unicode 繁中不會被破壞。掃描 PDF 明確標記 OCR 為 P1，不在 MVP 假裝已解決。
+2. **第 1 週**：做「角色表 → 聲音 mapping → 章節試聽」vertical slice；至少支援旁白 + 3 個角色、每角色固定聲音、可手動覆寫誤判。
+3. **第 1–2 週**：完成 5 組訪談（自作者／有聲書創作者／視障各至少 1 組），用 §15.13 的可計算門檻記錄真實行為：是否帶來檔案、是否試聽、是否留下 email、是否付費或預購。
+4. **第 2 週**：以 10 份獲授權樣本跑成本、延遲、可理解度與可存取性測試；再決定 Google/Azure/其他 provider，不以「品質佳」的未量測描述直接定案。
+5. **Go / no-go**：兩週達到 §15.13 的反駁門檻才進入 Stripe、RSS hosting 與 voice clone；未達門檻就 freeze 非核心功能，依數據縮窄 persona 或改定價。
 
 ---
 
@@ -25,9 +37,9 @@
 
 ### 1.1 問題陳述 (Problem Statement)
 
-**核心問題**：台灣/香港 25-50 歲繁中讀者，書庫有 50-500 本 EPUB（含自己出版的、博客來/Readmoo 買的、Kobo/Google Play Books 的），想通勤/運動/家事時聽書，但：1) Speechify/ElevenLabs 沒有繁中 TTS 品質；2) 念華書/台灣說書 YouTube 不支援自己的書庫；3) Apple Books 中文有聲書只有 1% 涵蓋繁中書；4) 自己 EPUB 轉 MP3 要手機裝 Calibre + 找 TTS engine + 拼音訊檔，沒人做到「一鍵 EPUB → 多章節 podcast RSS feed 可訂閱」。
+**核心問題**：自作者、有聲書創作者與視障／低視力使用者，手上有 EPUB 或文字型 PDF，想在通勤、校對、家事或閱讀輔助情境聽完自己的內容；但現有工具多半只解決「朗讀」或單一聲音，沒有「上傳自己的檔案 → 偵測旁白／角色 → 固定多角色聲音 → 可訂閱 audiobook」的完整流程。現有 workaround（閱讀器 TTS、通用 TTS、Calibre 加人工剪輯）仍有繁中品質、角色一致性、PDF 排版噪音、設定門檻與無障礙操作問題。v3.0 先支援可抽取文字的 PDF；掃描 PDF 的 OCR 明確列為 P1，不把未驗證能力寫成已完成。
 
-**市場證據**：
+**市場證據（待 §15.13 驗證，不當作已實收）**：
 - 台灣 EPUB 讀者約 80-120 萬（博客來 + Readmoo + Kobo 2024 活躍用戶估算）
 - 香港繁中讀者約 60-100 萬
 - 「Podcast 訂閱」「有聲書 Podcast」關鍵字 Apple Podcasts 台灣榜 2024-2026 持續成長
@@ -52,14 +64,19 @@
 - 痛點：買不到中文有聲版，自己轉 TTS 又難用
 - 付費意願：願意付 NT$199 終身（單次買斷）
 
+**v3.0 目標受眾邊界**：
+- **自作者**：需要在出版前聽稿、校對發音，或把自有作品交付成可下載 audiobook。
+- **有聲書創作者**：需要旁白／角色聲音 mapping、可重跑的章節批次與一致的角色音色，降低試聽與後製成本。
+- **視障／低視力使用者**：需要鍵盤、螢幕閱讀器友善的上傳、角色設定、播放與進度流程；只處理使用者擁有或獲授權的內容。
+
 ### 1.3 核心價值主張 (Value Proposition)
 
-> **「繁中 EPUB 一鍵轉 podcast，訂閱追蹤自己的書房，通勤運動家事時聽自己的書。」**
+> **「把自己的 EPUB／PDF 變成多角色繁中 audiobook，角色聲音一致，並以 podcast RSS 或下載檔帶走。」**
 
-- **For** 25-50 歲繁中 EPUB 讀者（台灣 + 香港）
-- **Who** 通勤/運動/家事時想聽自己的書
-- **Our product is** 一個 EPUB → 多章節 podcast RSS 工具
-- **That** 10 分鐘內把 EPUB 轉成可訂閱的 podcast feed
+- **For** 自作者、有聲書創作者、視障／低視力使用者（先以繁中內容為 beachhead）
+- **Who** 需要把自有 EPUB／PDF 轉成可聽、可校對、可訂閱的 audiobook
+- **Our product is** 一個 EPUB／文字型 PDF → 多角色 TTS audiobook 工具
+- **That** 先解析角色與章節，再在可接受延遲內產生角色一致的多章節音檔與 podcast feed
 - **Unlike** Speechify（60M users 但無繁中 TTS 品質）、念華書（訂閱制但無個人書庫）、Readmoo App TTS（品質差無 podcast RSS）、Calibre 手動（複雜）
 - **Our product** 用「繁中 TTS + 多章節切分 + podcast RSS feed + 個人書房 + 作者聲音 clone」一站式
 
@@ -75,12 +92,13 @@
 
 ### 1.5 ⭐ Non-Goals (明確不做)
 
-> ⚠️ **Sweet spot 提醒**：全球 TTS audiobook 紅海 sweet=2，本 PRD 明確排除：
+**Sweet spot 提醒**：全球 TTS audiobook 紅海不是本產品的評分基準；v3.0 的 sweet 依 §15.11 五題量表計算。
 - ❌ **不做英文/西/法主流 TTS**（與 Speechify/ElevenLabs/Apple Books 紅海對打必死）
 - ❌ **不做 Spotify/Netflix 級 podcast hosting**（超 scope、需 podcast hosting 牌照）
 - ❌ **不做 AI 自動寫有聲書摘要**（成本超支、無法驗證）
 - ❌ **不做 iOS/Android app v1**（個人 podcast 用戶桌機/筆電處理 EPUB）
 - ❌ **不做 DRM 解除 / 破解付費 EPUB**（違法）
+- ❌ **MVP 不做掃描 PDF OCR**（先支援可抽取文字的 PDF；OCR 需另行驗證成本、版權與準確率）
 - ❌ **不做 podcast 平台分潤 / 廣告**（與 Apple Podcasts/Spotify 商業模式衝突）
 
 ---
@@ -90,7 +108,7 @@
 ### 2.1 使用者流程圖
 
 ```
-[使用者上傳 EPUB] → [系統解析章節 + 文字抽取]
+[使用者上傳 EPUB／文字型 PDF] → [系統解析章節 + 文字抽取]
         ↓
 [選擇 TTS 引擎（內建繁中 NTTS / ElevenLabs 訂閱）]
         ↓
@@ -108,16 +126,17 @@
 ### 2.2 關鍵用戶故事 (User Stories)
 
 #### US-001：EPUB 一鍵轉 podcast
-> As 小瑜（行銷主管）
-> I want 上傳 1 本 EPUB + 選聲音 → 10 分鐘內拿到 podcast RSS URL
+> As 自作者／視障使用者
+> I want 上傳 1 本 EPUB 或文字型 PDF + 設定旁白與角色聲音 → 取得 audiobook 與 podcast RSS URL
 > So that 通勤時可以訂閱聽
 
 **Acceptance**：
-- 上傳 EPUB（最大 50MB）
+- 上傳 EPUB 或文字型 PDF（最大 50MB）
 - 自動解析章節（顯示章節列表）
-- 選聲音（5 種內建繁中）
+- 建立角色表（旁白 + 至少 3 個角色）並為每個角色選聲音
+- 同一角色在各章維持相同 voice mapping；可手動修正
 - 背景生成 MP3
-- 10 分鐘內完成（10 章以內）
+- 10 分鐘內完成（10 章以內、文字型 PDF／EPUB 的 pilot 基準）
 - 產生 RSS URL（私人 feed，含 token）
 
 #### US-002：Spotify/Apple Podcasts 訂閱
@@ -169,15 +188,19 @@
 
 ### 3.1 MVP（必做，P0；sweet-spot redefinition）
 
-#### FR-001：EPUB 上傳 + 解析（MUST）
-- 上傳 EPUB（最大 50MB）
+#### FR-001：EPUB/PDF 上傳 + 解析（MUST）
+- 上傳 EPUB 或文字型 PDF（最大 50MB）
 - 自動解析章節（依 EPUB TOC）
-- 文字抽取（去除 HTML/CSS）
+- PDF 文字抽取（保留閱讀順序，去除頁首頁尾與重複頁碼）
+- EPUB 文字抽取（去除 HTML/CSS）
 - 章節列表顯示
+- 顯示檔案類型與解析警告；掃描 PDF 顯示「需要 OCR，v1 不支援」
 
-#### FR-002：內建繁中 TTS 引擎（MUST）
+#### FR-002：內建繁中多角色 TTS 引擎（MUST）
 - 使用繁中 NTTS（gTTS / Microsoft Azure 繁中 / Google Cloud TWS）
 - 5 種內建聲音（男 2 + 女 2 + 中性 1）
+- 角色表至少支援旁白 + 3 個角色；每角色綁定一個 voice ID
+- 角色 mapping 跨章節持久化；偵測不確定時要求使用者確認，不靜默猜測
 - 章節合成背景任務
 
 #### FR-003：多章節 MP3 生成（MUST）
@@ -227,10 +250,15 @@
 
 ### 3.4 ⭐ Acceptance Criteria (Given/When/Then)
 
-#### AC-FR-001：EPUB 解析
-**Given** 小瑜上傳 1 本 EPUB（含 20 章）
+#### AC-FR-001：EPUB/PDF 解析
+**Given** 使用者上傳 1 本 EPUB 或文字型 PDF（含 20 章）
 **When** 解析完成
 **Then** 顯示 20 章節列表 + 總字數 + 預估音檔時長
+
+#### AC-FR-002：多角色聲音一致性
+**Given** 來源文件含旁白與至少 3 個可辨識角色
+**When** 使用者確認角色表並生成 2 個以上章節
+**Then** 每個角色在所有已生成章節使用同一 voice mapping，並可在重跑前手動覆寫
 
 #### AC-FR-004：RSS feed
 **Given** 小瑜完成 1 本 20 章 EPUB 轉檔
@@ -254,8 +282,8 @@
 | Backend | Next.js API routes + Supabase | Postgres + Auth + Storage + Background tasks |
 | Database | Supabase Postgres | free 500MB |
 | Auth | Supabase Auth (email + Google) | 免費 |
-| EPUB parser | epub2 / epub.js | Node.js EPUB 解析 |
-| TTS engine | Google Cloud TTS（繁中）/ Azure（備援） | 繁中品質佳 |
+| EPUB/PDF parser | epub2 / epub.js + pdfjs / pdf-parse | EPUB 章節與文字型 PDF 解析；掃描 PDF OCR 為 P1 |
+| TTS engine | Google Cloud TTS（繁中）/ Azure（備援） | provider 以 §15.13 樣本測試決定；支援角色 voice mapping |
 | Voice clone | ElevenLabs API（v2） | 最強 voice clone |
 | Background tasks | Supabase Edge Functions / Inngest | 長時間任務 |
 | Storage | Supabase Storage | MP3 + EPUB 暫存 |
@@ -371,7 +399,7 @@ model Book {
 
 | Method | Path | 用途 |
 |---|---|---|
-| POST | /api/books/upload | 上傳 EPUB |
+| POST | /api/books/upload | 上傳 EPUB／文字型 PDF |
 | GET | /api/books | 我的書房列表 |
 | GET | /api/books/[id] | 書的細節 + 章節 |
 | POST | /api/books/[id]/generate | 開始生成 MP3 |
@@ -393,7 +421,7 @@ model Book {
 | 指標 | 目標 |
 |---|---|
 | 首頁 TTFB | < 800ms |
-| EPUB 解析 | < 30s（20 章） |
+| EPUB/PDF 解析 | < 30s（20 章；文字型 PDF） |
 | MP3 生成（單章） | < 60s（5,000 字） |
 | RSS feed 回應 | < 200ms（CDN cached） |
 | Lighthouse Performance | ≥ 85 |
@@ -405,7 +433,7 @@ model Book {
 - RSS token 隨機 UUID，使用者可控
 - Supabase RLS：用戶只可讀自己的書
 - Stripe token 不存本地
-- 個資聲明：上傳 EPUB 屬個人使用，不外流
+- 個資聲明：上傳 EPUB／PDF 屬個人使用，不外流
 - GDPR/PIPA：可要求匯出 / 刪除
 
 ### 5.3 ⭐ 降級機制 (Graceful Degradation)
@@ -433,9 +461,10 @@ model Book {
 
 ### 6.1 v1 MVP DoD
 
-- [ ] EPUB 上傳 + 解析完成
+- [ ] EPUB + 文字型 PDF 上傳 + 解析完成（掃描 PDF 顯示 OCR 不支援）
 - [ ] 章節列表 + 文字抽取完成
 - [ ] 5 種內建繁中聲音完成
+- [ ] 旁白 + 至少 3 個角色的 voice mapping 與跨章一致性完成
 - [ ] 多章節 MP3 生成完成（背景任務）
 - [ ] Podcast RSS feed 完成（私有 token）
 - [ ] 個人書房 UI 完成
@@ -466,7 +495,8 @@ model Book {
 |---|---|---|---|---|---|
 | R-1 | 繁中 EPUB 用戶市場付費意願低 | 🟠 M | 🔴 H | **HIGH** | pilot 5 付費是驗證門檻，未達 pivot 到「簡中」或 archive |
 | R-2 | Speechify 進入繁中市場 | 🟢 L | 🟠 M | LOW | 國際品牌在地化慢；保持 podcast RSS 差異化 |
-| R-3 | Google/Azure TTS 繁中品質不佳 | 🟠 M | 🔴 H | **HIGH** | pilot 5 人滿意度是驗證；不滿意則評估 ElevenLabs 或本地 NTTS |
+| R-3 | provider 繁中或多角色表現不佳 | 🟠 M | 🔴 H | **HIGH** | 先跑 10 份樣本的可理解度與角色一致性測試；不滿意則切 provider 或縮小語料 |
+| R-9 | PDF 閱讀順序／頁首頁尾污染輸出 | 🟠 M | 🟠 M | MED | v1 限文字型 PDF；提供解析預覽與人工修正，OCR 延至 P1 |
 | R-4 | 11 Labs voice clone 成本過高 | 🟠 M | 🟠 M | MED | voice clone 為 v2 付費功能，月 $5 USD 可接受 |
 | R-5 | 著作權爭議（使用者上傳盜版 EPUB） | 🟠 M | 🟠 M | MED | ToS 聲明 + 不主動檢查但收到投訴下架 |
 | R-6 | Spotify/Apple Podcasts 拒絕私人 RSS | 🟢 L | 🟠 M | LOW | 兩平台均接受私有 RSS，已驗證 |
@@ -476,9 +506,9 @@ model Book {
 ### 7.2 ⭐ ADR (Architecture Decision Records)
 
 #### ADR-001：Google Cloud TTS 為主、Azure 為備援
-**決策**：Google Cloud TTS（繁中品質佳）為主引擎，Azure 為備援
-**理由**：Google 繁中 NTTS 品質業界領先，價格 $4/百萬字可承受
-**取捨**：需 Google Cloud 帳號 + billing 設定
+**決策**：v3.0 保留 Google Cloud TTS 與 Azure provider adapter，但主引擎以 §15.13 的真實樣本 benchmark 決定。
+**理由**：在尚未有同一批多角色繁中樣本的 MOS、角色一致性、成本與延遲數據前，不能把任一 provider 的「品質佳」當成已驗證事實。
+**取捨**：多一輪 benchmark 與 adapter 工作，但避免被單一供應商鎖定，也讓視障可理解度成為可量測門檻。
 
 #### ADR-002：Podcast RSS 而非 hosting
 **決策**：產生私有 RSS feed（token 認證），不 hosting podcast
@@ -592,7 +622,7 @@ model Book {
               在地
 ```
 
-**結論**：沒有人在「繁中 EPUB + podcast RSS + 個人書房」這個 niche。
+**v3.0 定位結論**：競品各自解決朗讀、TTS 或書庫的一段；本產品要驗證的不是「市場上完全沒人做」，而是「繁中 EPUB／文字型 PDF + 多角色 mapping + audiobook 匯出／私有 RSS + 無障礙流程」這個組合是否能讓三類目標使用者完成任務並付費。
 
 ### 10.2 術語表
 
@@ -842,9 +872,9 @@ quadrantChart
 
 ---
 
-## 15. ⭐ 深度市調報告（Sweet Spot 5 問體檢結果）
+## 15. ⭐ 深度市調報告（v3.0 Sweet Spot 5 問體檢結果）
 
-### 15.1 五問一：誰已經解決了主要問題？
+### 15.1 Q1：誰已經解決了主要問題？（替代方案與缺口）
 
 | 競品 | 是否解決？ | 缺口 |
 |---|---|---|
@@ -855,48 +885,50 @@ quadrantChart
 | 念華書 | 是（訂閱制） | 書庫固定，無個人 EPUB |
 | Calibre + 手動 TTS | 部分 | 複雜、無 podcast RSS |
 
-**結論**：沒有人在「繁中 EPUB + podcast RSS + 個人書房」這個 niche。
+**v3.0 判讀**：替代方案已解決「播放／朗讀」的一部分，但沒有同時解決「自有 EPUB/PDF、繁中、多角色一致性、audiobook 交付與視障可存取」。因此不是「沒有競品」，而是仍有可被驗證的 workflow gap。
 
-### 15.2 五問二：使用者為何還會換？
+### 15.2 Q2：使用者為何還會換？（痛點強度與轉換觸發）
 
 **現有 workaround 痛點**：
-1. Readmoo App TTS 品質差（破音、停頓不自然）
-2. Apple Books 中文有聲書僅 1% 涵蓋繁中書
-3. Speechify 繁中 TTS 機械感重
-4. 念華書書庫固定，不能聽自己的書
-5. Calibre 手動流程要 2 小時設定
+1. 通用閱讀器 TTS 多為單一聲音，小說對話沒有角色辨識與一致 mapping。
+2. PDF 常有頁碼、頁首頁尾與雙欄閱讀順序噪音；視障使用者難以自行修正。
+3. 通用 TTS／voice API 需要自行處理分章、重試、音檔拼接與 metadata。
+4. 固定書庫服務不能處理自作者自己的 EPUB/PDF，作者也難以用 audiobook 交付給試讀者。
+5. Calibre 加人工後製的設定與檔案管理成本高，不能直接產生私有 RSS。
 
 **換的觸發點**：
 - 第 1 次聽 Readmoo TTS 覺得「破音」
 - 第 1 次發現想聽的書沒有中文有聲版
 - 第 1 次想把 EPUB 帶到運動 / 家事場景
 
-### 15.3 五問三：甜蜜點是否比競品更窄、更可交付？
+### 15.3 Q3：甜蜜點是否比競品更窄、更可交付？（wedge）
 
-**甜蜜點 = 繁中 EPUB × podcast RSS × 個人書房**
+**甜蜜點 = 繁中 EPUB／文字型 PDF × 旁白 + 多角色 TTS × audiobook 匯出／私有 RSS**
 
-**窄**：✅（繁中、非全球）
-**可交付**：✅（Google TTS + podcast RSS，技術成熟）
-**比競品好**：✅（vs Readmoo 品質好、vs Speechify 繁中好、vs 念華書個人書房）
+**窄**：✅（先限繁中、自有／獲授權內容、三類明確受眾）
+**可交付**：🟡（文字型 EPUB/PDF 與 TTS 可交付；多角色偵測、PDF 清理與 OCR 仍需 benchmark）
+**比競品好**：🟡（差異化是完整 workflow，不宣稱單純音質已勝出；需用盲測與任務完成率驗證）
 
-### 15.4 五問四：誰會付費、用什麼預算？
+### 15.4 Q4：誰會付費、用什麼預算？（付費單位與支付理由）
 
-**付費者**：25-50 歲繁中 EPUB 讀者（台灣 + 香港）
-**預算**：NT$149-NT$499，從「訂閱預算」（如 Netflix NT$270、Spotify NT$149）
-**CAC**：NT$200-400（Threads + Dcard + PTT + 連登招募）
-**LTV**：NT$900-NT$5,000（6-12 個月留存）
+**付費者**：自作者（校對／交付）、有聲書創作者（批次製作）與需要閱讀輔助的視障／低視力使用者；購買者可能是作者本人、工作室或支持無障礙的機構。
+**測試中的預算假設**：個人 NT$149-NT$499/月或按本付費；創作者方案以 NT$1,500/月作為待驗證 anchor；視障使用者需提供可負擔方案或機構補助，不能只用一般訂閱轉換推論。
+**CAC 假設**：NT$200-400（社群招募；未經付費投放實驗驗證）。
+**LTV 假設**：NT$900-NT$5,000（6-12 個月留存；不是已實收數字）。
 
-### 15.5 五問五：兩週能否取得可反駁證據？
+### 15.5 Q5：兩週能否取得可反駁證據？（實驗可行性）
 
 **可**：
-1. Threads 發文測試需求（500+ reach）
-2. 訪談 5 個繁中 EPUB 讀者（30 分鐘/人）
-3. Landing page 收集 100 email
-4. Google Cloud TTS 申請 1-2 天
+1. 訪談 5 組目標使用者（自作者、有聲書創作者、視障／低視力至少各 1 組），每組要求展示最近一次 workaround。
+2. 收集 5 份獲授權 EPUB/PDF，做角色表、解析預覽與盲聽試驗。
+3. Landing page + 可操作 demo，記錄 email、試聽完成、上傳意願與預購／付費意願，不只記曝光。
+4. 對 10 份樣本量測解析成功率、角色 mapping 修正率、可理解度、每本成本與生成延遲。
+5. 以 2 週為止點，任何一項未達 §15.13 門檻即視為反駁訊號，而不是用更大 TAM 解釋掉。
 
-**不可反駁風險**：
-- persona 不存在（市場太小）→ go/no-go 閾值 5 付費
-- podcast RSS workflow 太複雜 → go/no-go 閾值 8 RSS 訂閱成長
+**可反駁門檻**：
+- persona 不存在（市場太小）→ 5 組訪談中至少 3 組帶來真實檔案並完成試聽，否則縮窄或停止
+- 多角色 workflow 太複雜 → 10 份樣本中至少 8 份不需重大人工重排，否則先做人工角色表或改為單旁白
+- 付費價值不足 → landing page 100 個合格訪客中至少 10 個留下 email，且至少 3 個願意預購／付費測試
 
 ### 15.6 市場與競爭重檢（2026 quick re-check）
 
@@ -905,7 +937,14 @@ quadrantChart
 - Apple Podcasts 仍接受私有 RSS（2026-07 確認）
 - Spotify for Podcasters 仍接受私有 RSS（2026-07 確認）
 - Google Cloud TTS 繁中 NTTS 品質佳（2026-07 確認）
-- Readmoo / 博客來 / Kobo 繁中書庫持續成長（2026-07 確認）
+- Readmoo / 博客來 / Kobo 繁中書庫與使用情境（公開產品頁，待訪談驗證；2026-07-19）
+
+**Peer URL smoke check（2026-07-19，均實際 `curl -L` 回 HTTP 200）**：
+- https://github.com/Readarr/Readarr — 200（電子書庫／metadata workflow peer）
+- https://github.com/aedocw/epub2tts — 200（EPUB → TTS 直接 peer）
+- https://github.com/rhasspy/piper — 200（本地 TTS engine peer）
+- https://github.com/coqui-ai/TTS — 200（TTS toolkit peer）
+- https://speechify.com/ — 200（消費者朗讀／競品 peer）
 
 ### 15.7 可服務市場（Beachhead，而非虛大 TAM）
 
@@ -932,39 +971,72 @@ quadrantChart
 
 | 評分 | 分數 | 依據 |
 |---|---|---|
-| Sweet spot | **6 / 10** | 5 問通過 4 問（persona 明確、niche 窄、可交付、有付費意願），2 問待驗證（轉換率、TTS 品質） |
-| PRD 完成度 | **9.0 / 10** | 14 區塊齊全 + §15 5 問體檢 + 訪談 SOP + 失敗模式 |
-| 商業化分數 | (9.0 × 0.3 + 6 × 0.7) × 10 | = (2.7 + 4.2) × 10 = **69 / 100** |
+| Sweet spot | **7.8 / 10** | Q1–Q5 逐題量表；計算與證據見 §15.11 |
+| PRD 完成度 | **9.0 / 10** | 14 區塊 + v3.0 §15.11 量表、§15.12 ADR、§15.13 市場驗證 |
+| 商業化分數 | `30 + sweet × 7` | `30 + 7.8 × 7 = **84.6 / 100**`；不是營收 |
 
 ### 15.10 決策、退出與下一次 review
 
-**決策**：v2.2.2 從「全球 TTS audiobook 紅海」pivot 到「繁中 EPUB podcast niche」
-**sweet=6 判定**：可執行 pilot，30 天內有 go/no-go 數據
+**決策**：v3.0 聚焦「繁中 EPUB／文字型 PDF → 多角色 TTS audiobook」，服務自作者、有聲書創作者、視障／低視力使用者；先以兩週可反駁實驗決定是否擴大。
+**sweet=7.8 判定**：值得執行受控 vertical slice，但不是已證實營收；兩週內須以 §15.13 的樣本、可存取性與付費行為門檻作 go/no-go。
 **退出條件**：pilot < 5 付費 + < 8 RSS 訂閱 → freeze + 重新訪談
 **下次 review**：2026-10-13（pilot 結案日）
 
-### 15.11 Sweet spot evidence ledger
+### 15.11 v3.0 Sweet Spot 量表（1–10）
 
-| 證據 | 來源 | 日期 |
-|---|---|---|
-| Speechify 60M users | speechify.com | 2026-07-19 |
-| ElevenLabs $6B 估值 | elevenlabs.io | 2026-07-19 |
-| Apple Podcasts 接受私有 RSS | help.apple.com | 2026-07-19 |
-| Spotify 接受私有 RSS | podcasters.spotify.com | 2026-07-19 |
-| 繁中 EPUB niche 空白 | 競品分析 §10.1 | 2026-07-19 |
-| 台灣 + 香港 150 萬 EPUB 讀者 | 公開估算 2024 | 2024 |
+評分規則：每題 1–10 分；1 = 幾乎沒有可驗證優勢／只能靠猜，5 = 有替代方案與初步訊號但關鍵假設未證實，10 = 目標使用者、痛點、交付、付費與短週期實驗均有直接證據。分數不是營收，也不取保守；在沒有實測的地方明確標記為假設。
 
-### 15.12 Maintainer handoff
+| 問題 | v3.0 分數 | 給分理由與待驗證缺口 |
+|---|---:|---|
+| Q1 替代方案與缺口 | 8.0 | EPUB/PDF 朗讀、通用 TTS、Calibre 等替代方案可觀察；多角色一致、PDF 清理、無障礙交付的 workflow gap 清楚，但尚無競品盲測。 |
+| Q2 痛點與換用動機 | 7.5 | 自作者校對、創作者後製、視障閱讀輔助都具體；目前是問題訪談假設，尚未有 5 組訪談的真實檔案與 workaround 記錄。 |
+| Q3 窄、可交付、差異化 | 7.5 | 受眾、格式、語言與角色 mapping 已收窄；文字型 EPUB/PDF 可做，PDF 排版、多角色偵測與 OCR 仍有技術風險。 |
+| Q4 付費者與預算 | 7.0 | 作者／工作室的成本節省與交付價值明確，NT$149–1,500 是待測 anchor；尚無預購、刷卡或付費 pilot 的真實數據。 |
+| Q5 兩週可反駁性 | 9.0 | 5 組訪談、5 份獲授權樣本、10 份 benchmark、landing page 都可在兩週內執行，且有明確失敗門檻。 |
+| **Sweet** | **7.8 / 10** | **(8.0 + 7.5 + 7.5 + 7.0 + 9.0) / 5 = 39.0 / 5 = 7.8** |
 
-**給未來接手者**：
-1. sweet=6 niche（小眾但明確），pilot 結案是 go/no-go
-2. 不要擴展到英文/西語（會被 Speechify/ElevenLabs 碾壓）
-3. 不要做 podcast hosting（會擴 scope）
-4. podcast RSS 是核心差異化，不要改成 hosting
-5. RSS token 是隱私基石，不要明文
-6. Google TTS + Supabase + Vercel 架構已驗證，不需重構
-7. 30 天 pilot 數據是決策唯一依據
+**商業化（指定公式，不取保守）**：`30 + sweet × 7 = 30 + 7.8 × 7 = 84.6 / 100`。這是規格決策分數，不代表已取得收入；真實收入仍以付款紀錄為準。
+
+### 15.12 v3.0 ADR（Architecture Decision Records）
+
+#### ADR-007：先做文字型 PDF，OCR 延至 P1
+**決策**：MVP 接受 EPUB 與可抽取文字的 PDF；掃描 PDF 顯示不支援，OCR 只有在樣本準確率、成本與版權流程通過後進 P1。
+**理由**：先縮短解析風險，避免把 OCR 的錯字與版面錯序直接送進 TTS。
+**取捨**：失去部分 PDF 使用者，但能以可重現的文字輸入完成 pilot。
+
+#### ADR-008：角色表是 source of truth，AI 偵測不可靜默覆蓋
+**決策**：系統可建議旁白／角色，但使用者確認後才生成；跨章節使用持久化 voice mapping。
+**理由**：角色誤判會破壞 audiobook 可理解度，視障使用者尤其需要可預期輸出。
+**取捨**：首次設定多一步，但換來可修正、可重跑與一致性。
+
+#### ADR-009：多角色輸出同時保留 MP3 與私有 RSS
+**決策**：每章輸出可下載 MP3，另產生含 token 的私有 RSS；不自建公開 podcast hosting。
+**理由**：作者需要交付檔案，聽眾需要訂閱；兩者共用同一章節 artifact。
+**取捨**：需維護 metadata、token rotate 與儲存清理，但 scope 仍小於 hosting。
+
+#### ADR-010：解析預覽與人工修正先於昂貴 TTS
+**決策**：抽取後先顯示章節、頁首頁尾清理與角色表預覽；使用者確認才消耗 TTS 額度。
+**理由**：在生成前攔截 PDF 順序與角色 mapping 錯誤，降低成本與重跑。
+**取捨**：流程多一個確認畫面，但可量測修正率並保護付費者額度。
+
+#### ADR-011：以可理解度、角色一致性、成本、延遲做 provider benchmark
+**決策**：Google/Azure/候選 provider 使用同一 10 份樣本、同一角色表與同一評分表比較；benchmark 後才決定主備。
+**理由**：v3.0 不能把未量測的「品質佳」當成事實；視障可理解度與創作者後製時間是核心品質指標。
+**取捨**：延後 provider 鎖定與部分開發，但減少單一 provider 錯誤決策。
+
+### 15.13 v3.0 市場驗證（至少 5 項，可反駁）
+
+| ID | 實驗／對象 | 兩週執行方式 | 通過門檻 | 失敗時行動 |
+|---|---|---|---|---|
+| MV-001 | 5 組訪談：自作者、有聲書創作者、視障／低視力 | 每組展示最近一次檔案轉換或閱讀 workaround，記錄時間、痛點、支付者 | ≥3/5 願意帶來真實 EPUB/PDF 並完成試聽 | 重寫 persona／先做單一聲音，停止泛用市場敘事 |
+| MV-002 | 解析 spike：5 EPUB/PDF | 3 EPUB + 2 文字型 PDF；檢查章節、閱讀順序、頁首頁尾與繁中 Unicode | ≥4/5 可在 30 秒內產生可接受預覽；掃描 PDF 不列入通過 | 限定格式、增加人工修正；OCR 不進 MVP |
+| MV-003 | 多角色 benchmark：10 份獲授權樣本 | 旁白 + 至少 3 角色，兩個 provider／同一聲音表，盲聽與人工修正記錄 | ≥8/10 不需重大人工重排；角色一致性 ≥90% 章節 | 先交付人工角色表／單旁白，延後自動偵測 |
+| MV-004 | 可存取性任務：5 位目標使用者 | 鍵盤 + screen reader 完成上傳、預覽、選聲、播放與進度 | ≥4/5 無協助完成核心流程；WCAG AA 關鍵路徑無 blocker | 修正 aria、焦點、字幕／文字狀態與播放控制 |
+| MV-005 | Landing page／demo 付費意願 | 100 個合格訪客；展示 EPUB/PDF、多角色試聽與 MP3/RSS 交付 | ≥10 個 email，且 ≥3 個願意預購／付費測試 | 改按本／創作者方案定價或停止付費開發 |
+| MV-006 | 成本與延遲試跑 | 10 份樣本記錄每本 TTS 成本、解析時間、生成時間、重跑率 | 10 章基準在 10 分鐘內；單本成本可被目標價格覆蓋且毛利假設 ≥60% | 限制章節／字數、改 provider 或改成按本計價 |
+
+**驗證紀錄格式**：每個實驗保存日期、樣本是否獲授權、原始觀察、數值、失敗案例與下一步；不得用推估 TAM、曝光量或未付款意願替代付款紀錄。
 
 ---
 
-**END OF SPEC v2.2.2**
+**END OF SPEC v3.0**
