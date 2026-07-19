@@ -1,22 +1,48 @@
-# Dependencies
+# dependencies
 node_modules/
+.pnp
+.pnp.js
 
-# Next.js
+# next.js
 .next/
 out/
+build/
 
-# Environment
-.env
-.env.local
-.env*.local
+# vercel
+.vercel
 
-# Misc
+# misc
 .DS_Store
 *.pem
+
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# Legacy files (moved to legacy/)
-index-v3.*.html
-tsconfig.tsbuildinfo
+# local env files
+.env
+.env*.local
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# tests
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+.vitest-cache/
+
+# logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# python (legacy)
+__pycache__/
+*.pyc

@@ -2,6 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   serverExternalPackages: ['adm-zip', 'pdfjs-dist'],
+  turbopack: {},
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Don't bundle server-only packages on the client
