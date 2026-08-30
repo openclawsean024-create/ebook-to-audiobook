@@ -46,3 +46,6 @@ playwright/.cache/
 # python (legacy)
 __pycache__/
 *.pyc
+
+# Production env (Vercel OIDC token — never commit)
+.env.production
