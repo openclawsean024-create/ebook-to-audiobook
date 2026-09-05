@@ -48,7 +48,7 @@ async function parseTxt(buffer: Buffer): Promise<{ title: string; text: string; 
 // Parse PDF text using pdfjs-dist
 async function parsePdf(buffer: Buffer): Promise<{ title: string; text: string; chapters: Array<{ title: string; text: string }> }> {
   const data = new Uint8Array(buffer)
-  const pdf = await getDocument({ data, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise
+  const pdf = await getDocument({ data, useWorkerFetch: false, useSystemFonts: true }).promise
   let text = ''
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i)

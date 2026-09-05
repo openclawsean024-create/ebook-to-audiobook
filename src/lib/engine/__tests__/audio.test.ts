@@ -152,7 +152,6 @@ describe('audio module — SPEC §3 FR-003 chapter MP3 + ID3 tags', () => {
         chapterTitle: 'Chapter 1',
         segments: [{ character: narrator, segment: fakeSegment('v', 500) }],
       })
-      const s = String.fromCharCode(...audio.wavBytes.slice(0, 12).values ? audio.wavBytes.slice(0, 12) : [])
       // Simpler: just check magic bytes individually
       expect(audio.wavBytes[0]).toBe(0x52) // 'R'
       expect(audio.wavBytes[1]).toBe(0x49) // 'I'
@@ -162,8 +161,6 @@ describe('audio module — SPEC §3 FR-003 chapter MP3 + ID3 tags', () => {
       expect(audio.wavBytes[9]).toBe(0x41) // 'A'
       expect(audio.wavBytes[10]).toBe(0x56) // 'V'
       expect(audio.wavBytes[11]).toBe(0x45) // 'E'
-      // silence the unused-variable warning
-      void s
     })
   })
 
