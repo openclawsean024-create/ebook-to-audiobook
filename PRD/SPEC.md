@@ -1,12 +1,28 @@
-# Ebook to Audiobook — 規格書 v3.0
+# Ebook to Audiobook — 規格書 v3.0.2
 
 > **專案**：Ebook to Audiobook（EPUB/PDF → 多角色 TTS audiobook + Podcast RSS）
-> **PRD 版本**：v3.0（forced upgrade；Sweet Spot 5 問重評）
-> **撰寫日期**：2026-07-19
+> **PRD 版本**：v3.0.2（批次 C fleet upgrade — CI / lint 補強 + 規格書版本對齊）
+> **撰寫日期**：2026-09-06
 > **Git branch**：`master`
-> **作者**：Sean（PRD specialist 批次 B 重寫）
-> **SSOT 位置**：`/home/sean/Program/ebook-to-audiobook/PRD/SPEC.md`
-> **本地路徑**：`/home/sean/Program/ebook-to-audiobook`
+> **作者**：Sean（PRD specialist 批次 B 重寫 + 批次 C infra 補強）
+> **SSOT 位置**：`PRD/SPEC.md`（隨 repo 走，單一事實來源）
+> **本地路徑**：`/Users/sean/.minimax/workspace/repo-fleet/ebook-to-audiobook`
+
+---
+
+## 0.1 v3.0.2 改版摘要 (What's new in v3.0.2)
+
+本批次（批次 C — Sean 10-repo-fleet 基礎建設）不重做 SPEC 內容，僅做 **infra 對齊**：
+
+| v3.0 → v3.0.2 差異 | 為何改 | 對誰重要 |
+|---|---|---|
+| 版本升級為 **v3.0.2 / 2026-09-06** | 與 fleet 其他 repo 的 PRD 版本對齊 | 維護者 / fleet 監控 |
+| `lint` script 由 `next lint` 改為 `tsc --noEmit` | Next.js 16 移除了 `next lint`；改用內建 TypeScript 編譯器做靜態檢查 | CI / 開發者 |
+| CI workflow 從「只 deploy」升級為「lint + test + build + deploy」四 job | 讓所有 push 都先驗證才部署，避免壞 build 直接上 prod | 維護者 / 終端使用者 |
+| `package.json` test script 已在用 vitest，無需改 | 既已綠（107 tests） | — |
+| 新增 `PRD/CHANGELOG.md` | 記錄批次 C 的 infra 改動與對規格書的影響 | 維護者 |
+
+**SPEC 主體（§1–§15）內容不變**，詳細 Sweet Spot、商業化公式、ADR 仍以 v3.0 為準。
 
 ---
 
